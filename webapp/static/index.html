@@ -3,9 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meteorite Intersection Calculator</title>
+    <title>Meteorite Strewn Field Calculator</title>
     <style>
-      * {
+      *,
+      *::before,
+      *::after {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
@@ -19,82 +21,157 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 2rem 1rem;
+        padding: 2rem 1rem 4rem;
       }
 
       h1 {
-        font-size: 1.6rem;
+        font-size: 1.5rem;
         color: #f0a500;
-        margin-bottom: 0.3rem;
         letter-spacing: 1px;
+        margin-bottom: 0.25rem;
       }
-
       .subtitle {
-        font-size: 0.85rem;
-        color: #888;
+        font-size: 0.82rem;
+        color: #666;
         margin-bottom: 2rem;
       }
 
-      .card-row {
-        display: flex;
-        gap: 1.5rem;
+      .section {
         width: 100%;
-        max-width: 860px;
-        flex-wrap: wrap;
-      }
-
-      .card {
-        flex: 1;
-        min-width: 280px;
+        max-width: 900px;
         background: #1a1a1a;
         border: 1px solid #2a2a2a;
         border-radius: 10px;
         padding: 1.4rem;
+        margin-bottom: 1.2rem;
       }
 
-      .card h2 {
-        font-size: 1rem;
+      .section-title {
+        font-size: 0.95rem;
+        font-weight: 700;
         color: #f0a500;
         margin-bottom: 1rem;
         border-bottom: 1px solid #2a2a2a;
         padding-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
 
-      label {
-        display: block;
-        font-size: 0.78rem;
-        color: #aaa;
-        margin-bottom: 0.25rem;
-        margin-top: 0.75rem;
+      .row {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.6rem;
       }
 
-      input {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
+      .field {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 120px;
+      }
+      .field label {
+        font-size: 0.72rem;
+        color: #888;
+        margin-bottom: 0.2rem;
+      }
+      .field input {
+        padding: 0.45rem 0.65rem;
         background: #111;
         border: 1px solid #333;
         border-radius: 6px;
         color: #e0e0e0;
-        font-size: 0.9rem;
-        transition: border-color 0.2s;
+        font-size: 0.88rem;
       }
-
-      input:focus {
+      .field input:focus {
         outline: none;
         border-color: #f0a500;
       }
 
-      .hint {
-        font-size: 0.7rem;
-        color: #555;
-        margin-top: 0.2rem;
+      .add-btn,
+      .remove-btn {
+        padding: 0.35rem 0.8rem;
+        border-radius: 5px;
+        border: none;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .add-btn {
+        background: #2a2a2a;
+        color: #f0a500;
+        border: 1px solid #f0a500;
+      }
+      .add-btn:hover {
+        background: #f0a500;
+        color: #000;
+      }
+      .remove-btn {
+        background: #2a2a2a;
+        color: #ff6b6b;
+        border: 1px solid #ff6b6b;
+        margin-left: 0.5rem;
+      }
+      .remove-btn:hover {
+        background: #ff6b6b;
+        color: #000;
       }
 
-      button {
-        margin-top: 2rem;
-        width: 100%;
-        max-width: 860px;
+      .entry {
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
         padding: 0.85rem;
+        margin-bottom: 0.75rem;
+      }
+      .entry-header {
+        font-size: 0.75rem;
+        color: #666;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .hint {
+        font-size: 0.68rem;
+        color: #555;
+        margin-top: 0.15rem;
+      }
+
+      .wind-toggle {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      .toggle-btn {
+        padding: 0.4rem 1rem;
+        border-radius: 5px;
+        border: 1px solid #333;
+        background: #111;
+        color: #888;
+        font-size: 0.82rem;
+        cursor: pointer;
+      }
+      .toggle-btn.active {
+        background: #f0a500;
+        color: #000;
+        border-color: #f0a500;
+        font-weight: 700;
+      }
+
+      #wind-single-form,
+      #wind-layers-form {
+        display: none;
+      }
+      #wind-single-form.visible,
+      #wind-layers-form.visible {
+        display: block;
+      }
+
+      .calc-btn {
+        width: 100%;
+        max-width: 900px;
+        padding: 0.9rem;
         background: #f0a500;
         color: #000;
         font-size: 1rem;
@@ -102,253 +179,478 @@
         border: none;
         border-radius: 8px;
         cursor: pointer;
-        letter-spacing: 0.5px;
-        transition: background 0.2s;
+        margin-bottom: 1.2rem;
       }
-
-      button:hover {
+      .calc-btn:hover {
         background: #ffc233;
       }
-      button:disabled {
-        background: #555;
+      .calc-btn:disabled {
+        background: #444;
+        color: #888;
         cursor: not-allowed;
       }
 
-      #result {
-        margin-top: 1.5rem;
+      #results {
+        display: none;
         width: 100%;
-        max-width: 860px;
+        max-width: 900px;
+      }
+
+      .results-section {
         background: #1a1a1a;
         border: 1px solid #2a2a2a;
         border-radius: 10px;
         padding: 1.4rem;
-        display: none;
-      }
-
-      #result h2 {
-        font-size: 1rem;
-        color: #f0a500;
         margin-bottom: 1rem;
       }
 
-      .result-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
       }
-
-      .result-item label {
-        margin-top: 0;
-        font-size: 0.75rem;
+      th {
+        text-align: left;
         color: #888;
-      }
-
-      .result-item .value {
-        font-size: 1.1rem;
         font-weight: 600;
-        color: #e0e0e0;
+        font-size: 0.75rem;
+        padding: 0.4rem 0.5rem;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      td {
+        padding: 0.45rem 0.5rem;
+        border-bottom: 1px solid #1e1e1e;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      td a {
+        color: #4a9eff;
+        text-decoration: none;
+        font-size: 0.78rem;
+      }
+      td a:hover {
+        text-decoration: underline;
       }
 
-      .maps-link {
+      .source-badge {
         display: inline-block;
-        margin-top: 0.5rem;
-        padding: 0.55rem 1.1rem;
-        background: #1a73e8;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        background: #2a2a2a;
+        color: #f0a500;
+        margin-bottom: 0.75rem;
+      }
+
+      .download-btn {
+        display: inline-block;
+        margin-top: 1rem;
+        padding: 0.55rem 1.2rem;
+        background: #1a6b3a;
         color: #fff;
         border-radius: 6px;
-        text-decoration: none;
         font-size: 0.85rem;
         font-weight: 600;
-        transition: background 0.2s;
+        cursor: pointer;
+        border: none;
       }
-
-      .maps-link:hover {
-        background: #1558b0;
+      .download-btn:hover {
+        background: #228b50;
       }
 
       .error {
         color: #ff6b6b;
         font-size: 0.9rem;
-      }
-
-      .direction {
-        font-size: 0.78rem;
-        color: #666;
-        margin-top: 0.75rem;
-        font-family: monospace;
+        padding: 0.75rem;
       }
     </style>
   </head>
   <body>
-    <h1>☄️ Meteorite Intersection Calculator</h1>
+    <h1>☄️ Meteorite Strewn Field Calculator</h1>
     <p class="subtitle">
-      Enter two ground observations to estimate the impact site.
+      Enter radar hits, ground observations, and wind data to estimate the
+      strewn field.
     </p>
 
-    <div class="card-row">
-      <div class="card">
-        <h2>Observation 1</h2>
+    <!-- RADAR HITS -->
+    <div class="section">
+      <div class="section-title">
+        Radar Hits
+        <button class="add-btn" onclick="addRadarHit()">+ Add Hit</button>
+      </div>
+      <p class="hint" style="margin-bottom: 0.75rem">
+        Lat/lon/altitude from the middle of each radar return. At least 2 hits
+        gives the most accurate trajectory.
+      </p>
+      <div id="radar-hits"></div>
+    </div>
 
-        <label>Latitude (°)</label>
-        <input type="number" id="lat1" step="any" placeholder="e.g. 34.0522" />
-        <div class="hint">Positive = North, Negative = South</div>
+    <!-- GROUND OBSERVATIONS -->
+    <div class="section">
+      <div class="section-title">
+        Ground Observations
+        <span style="color: #555; font-size: 0.75rem; font-weight: 400"
+          >(optional)</span
+        >
+        <button class="add-btn" onclick="addGroundObs()">
+          + Add Observation
+        </button>
+      </div>
+      <div id="ground-obs"></div>
+    </div>
 
-        <label>Longitude (°)</label>
-        <input
-          type="number"
-          id="lon1"
-          step="any"
-          placeholder="e.g. -118.2437"
-        />
-        <div class="hint">Positive = East, Negative = West</div>
-
-        <label>Altitude (m)</label>
-        <input
-          type="number"
-          id="alt1"
-          step="any"
-          placeholder="e.g. 100"
-          value="0"
-        />
-
-        <label>Azimuth (°)</label>
-        <input
-          type="number"
-          id="az1"
-          step="any"
-          placeholder="0=N  90=E  180=S  270=W"
-        />
-
-        <label>Elevation above horizon (°)</label>
-        <input type="number" id="el1" step="any" placeholder="e.g. 30" />
+    <!-- WIND -->
+    <div class="section">
+      <div class="section-title">Wind Data</div>
+      <div class="wind-toggle">
+        <button
+          class="toggle-btn active"
+          id="btn-single"
+          onclick="setWindMode('single')"
+        >
+          Single Average
+        </button>
+        <button
+          class="toggle-btn"
+          id="btn-layers"
+          onclick="setWindMode('layers')"
+        >
+          By Altitude Layer
+        </button>
       </div>
 
-      <div class="card">
-        <h2>Observation 2</h2>
+      <div id="wind-single-form" class="visible">
+        <div class="row">
+          <div class="field">
+            <label>Speed (m/s)</label>
+            <input
+              type="number"
+              id="wind-spd"
+              step="any"
+              placeholder="e.g. 10"
+              value="0"
+            />
+          </div>
+          <div class="field">
+            <label>Direction — coming FROM (°)</label>
+            <input
+              type="number"
+              id="wind-dir"
+              step="any"
+              placeholder="0=N 90=E 180=S 270=W"
+              value="0"
+            />
+          </div>
+        </div>
+        <p class="hint">
+          Meteorological convention: direction the wind is blowing FROM.
+        </p>
+      </div>
 
-        <label>Latitude (°)</label>
-        <input type="number" id="lat2" step="any" placeholder="e.g. 34.1522" />
-
-        <label>Longitude (°)</label>
-        <input
-          type="number"
-          id="lon2"
-          step="any"
-          placeholder="e.g. -118.1437"
-        />
-
-        <label>Altitude (m)</label>
-        <input
-          type="number"
-          id="alt2"
-          step="any"
-          placeholder="e.g. 150"
-          value="0"
-        />
-
-        <label>Azimuth (°)</label>
-        <input
-          type="number"
-          id="az2"
-          step="any"
-          placeholder="0=N  90=E  180=S  270=W"
-        />
-
-        <label>Elevation above horizon (°)</label>
-        <input type="number" id="el2" step="any" placeholder="e.g. 25" />
+      <div id="wind-layers-form">
+        <p class="hint" style="margin-bottom: 0.75rem">
+          Each layer applies from its altitude down to the next layer.
+        </p>
+        <div id="wind-layers"></div>
+        <button
+          class="add-btn"
+          style="margin-top: 0.5rem"
+          onclick="addWindLayer()"
+        >
+          + Add Layer
+        </button>
       </div>
     </div>
 
-    <button id="calcBtn" onclick="calculate()">Calculate Impact Site</button>
+    <div style="display:flex;gap:0.75rem;width:100%;max-width:900px;margin-bottom:1.2rem">
+      <button class="calc-btn" id="calcBtn" onclick="calculate()" style="margin-bottom:0">
+        Calculate Strewn Field
+      </button>
+      <button class="calc-btn" onclick="loadSampleData()" style="margin-bottom:0;background:#2a2a2a;color:#f0a500;border:1px solid #f0a500;min-width:180px;flex:0 0 auto">
+        Load Sample Data
+      </button>
+    </div>
 
-    <div id="result">
-      <h2>Estimated Ground Impact</h2>
-      <div class="result-grid">
-        <div class="result-item">
-          <label>Latitude</label>
-          <div class="value" id="resLat">—</div>
-        </div>
-        <div class="result-item">
-          <label>Longitude</label>
-          <div class="value" id="resLon">—</div>
-        </div>
-      </div>
-      <a id="mapsLink" class="maps-link" href="#" target="_blank"
-        >Open in Google Maps</a
-      >
-      <div class="direction" id="resDir"></div>
+    <div id="results">
+      <div class="results-section" id="results-inner"></div>
     </div>
 
     <script>
+      let windMode = "single";
+
+      // ---- RADAR HITS ----
+      let radarCount = 0;
+      function addRadarHit() {
+        radarCount++;
+        const id = radarCount;
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.id = `radar-${id}`;
+        div.innerHTML = `
+      <div class="entry-header">
+        Hit #${id}
+        <button class="remove-btn" onclick="removeEntry('radar-${id}')">Remove</button>
+      </div>
+      <div class="row">
+        <div class="field"><label>Latitude (°)</label><input type="number" step="any" id="r${id}-lat" placeholder="34.0522"/></div>
+        <div class="field"><label>Longitude (°)</label><input type="number" step="any" id="r${id}-lon" placeholder="-118.2437"/></div>
+        <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="r${id}-alt" placeholder="50000"/></div>
+      </div>`;
+        document.getElementById("radar-hits").appendChild(div);
+      }
+
+      // ---- GROUND OBS ----
+      let obsCount = 0;
+      function addGroundObs() {
+        obsCount++;
+        const id = obsCount;
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.id = `obs-${id}`;
+        div.innerHTML = `
+      <div class="entry-header">
+        Observer #${id}
+        <button class="remove-btn" onclick="removeEntry('obs-${id}')">Remove</button>
+      </div>
+      <div class="row">
+        <div class="field"><label>Latitude (°)</label><input type="number" step="any" id="o${id}-lat" placeholder="34.0522"/></div>
+        <div class="field"><label>Longitude (°)</label><input type="number" step="any" id="o${id}-lon" placeholder="-118.2437"/></div>
+        <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="o${id}-alt" placeholder="100" value="0"/></div>
+        <div class="field"><label>Azimuth (°)</label><input type="number" step="any" id="o${id}-az" placeholder="0=N 90=E"/></div>
+        <div class="field"><label>Elevation (°)</label><input type="number" step="any" id="o${id}-el" placeholder="30"/></div>
+      </div>`;
+        document.getElementById("ground-obs").appendChild(div);
+      }
+
+      // ---- WIND LAYERS ----
+      let layerCount = 0;
+      function addWindLayer() {
+        layerCount++;
+        const id = layerCount;
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.id = `layer-${id}`;
+        div.innerHTML = `
+      <div class="entry-header">
+        Layer #${id}
+        <button class="remove-btn" onclick="removeEntry('layer-${id}')">Remove</button>
+      </div>
+      <div class="row">
+        <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="l${id}-alt" placeholder="30000"/></div>
+        <div class="field"><label>Speed (m/s)</label><input type="number" step="any" id="l${id}-spd" placeholder="15"/></div>
+        <div class="field"><label>Direction FROM (°)</label><input type="number" step="any" id="l${id}-dir" placeholder="270"/></div>
+      </div>`;
+        document.getElementById("wind-layers").appendChild(div);
+      }
+
+      function removeEntry(id) {
+        document.getElementById(id)?.remove();
+      }
+
+      function setWindMode(mode) {
+        windMode = mode;
+        document.getElementById("wind-single-form").className =
+          mode === "single" ? "visible" : "";
+        document.getElementById("wind-layers-form").className =
+          mode === "layers" ? "visible" : "";
+        document.getElementById("btn-single").className =
+          "toggle-btn" + (mode === "single" ? " active" : "");
+        document.getElementById("btn-layers").className =
+          "toggle-btn" + (mode === "layers" ? " active" : "");
+        document.getElementById("wind-single-form").style.display =
+          mode === "single" ? "" : "none";
+        document.getElementById("wind-layers-form").style.display =
+          mode === "layers" ? "" : "none";
+      }
+
+      // init with 2 radar hits and 1 ground obs
+      addRadarHit();
+      addRadarHit();
+      addGroundObs();
+      setWindMode("single");
+
+      // ---- COLLECT DATA ----
+      function collectRadarHits() {
+        const hits = [];
+        document.querySelectorAll("[id^='radar-']").forEach((el) => {
+          const n = el.id.split("-")[1];
+          const lat = parseFloat(document.getElementById(`r${n}-lat`)?.value);
+          const lon = parseFloat(document.getElementById(`r${n}-lon`)?.value);
+          const alt = parseFloat(document.getElementById(`r${n}-alt`)?.value);
+          if (!isNaN(lat) && !isNaN(lon) && !isNaN(alt))
+            hits.push({ lat, lon, alt });
+        });
+        return hits;
+      }
+
+      function collectGroundObs() {
+        const obs = [];
+        document.querySelectorAll("[id^='obs-']").forEach((el) => {
+          const n = el.id.split("-")[1];
+          const lat = parseFloat(document.getElementById(`o${n}-lat`)?.value);
+          const lon = parseFloat(document.getElementById(`o${n}-lon`)?.value);
+          const alt =
+            parseFloat(document.getElementById(`o${n}-alt`)?.value) || 0;
+          const az = parseFloat(document.getElementById(`o${n}-az`)?.value);
+          const el_ = parseFloat(document.getElementById(`o${n}-el`)?.value);
+          if (!isNaN(lat) && !isNaN(lon) && !isNaN(az) && !isNaN(el_))
+            obs.push({ lat, lon, alt, azimuth: az, elevation: el_ });
+        });
+        return obs;
+      }
+
+      function collectWindLayers() {
+        const layers = [];
+        document.querySelectorAll("[id^='layer-']").forEach((el) => {
+          const n = el.id.split("-")[1];
+          const alt = parseFloat(document.getElementById(`l${n}-alt`)?.value);
+          const spd = parseFloat(document.getElementById(`l${n}-spd`)?.value);
+          const dir = parseFloat(document.getElementById(`l${n}-dir`)?.value);
+          if (!isNaN(alt) && !isNaN(spd) && !isNaN(dir))
+            layers.push({ alt_m: alt, speed_ms: spd, direction_deg: dir });
+        });
+        return layers;
+      }
+
+      // ---- CALCULATE ----
       async function calculate() {
         const btn = document.getElementById("calcBtn");
-        const resultDiv = document.getElementById("result");
-
-        const get = (id) => parseFloat(document.getElementById(id).value);
-
-        const obs1 = {
-          lat: get("lat1"),
-          lon: get("lon1"),
-          alt: get("alt1"),
-          azimuth: get("az1"),
-          elevation: get("el1"),
-        };
-        const obs2 = {
-          lat: get("lat2"),
-          lon: get("lon2"),
-          alt: get("alt2"),
-          azimuth: get("az2"),
-          elevation: get("el2"),
-        };
-
-        for (const [key, val] of Object.entries({ ...obs1, ...obs2 })) {
-          if (isNaN(val)) {
-            resultDiv.style.display = "block";
-            resultDiv.innerHTML = `<p class="error">Please fill in all fields.</p>`;
-            return;
-          }
-        }
+        const resultsDiv = document.getElementById("results");
+        const inner = document.getElementById("results-inner");
 
         btn.disabled = true;
         btn.textContent = "Calculating…";
+
+        const payload = {
+          radar_hits: collectRadarHits(),
+          ground_obs: collectGroundObs(),
+          wind_mode: windMode,
+          wind_single: {
+            speed_ms:
+              parseFloat(document.getElementById("wind-spd").value) || 0,
+            direction_deg:
+              parseFloat(document.getElementById("wind-dir").value) || 0,
+          },
+          wind_layers: collectWindLayers(),
+        };
 
         try {
           const resp = await fetch("/calculate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ obs1, obs2 }),
+            body: JSON.stringify(payload),
           });
-
           const data = await resp.json();
-          resultDiv.style.display = "block";
+          resultsDiv.style.display = "block";
 
           if (data.error) {
-            resultDiv.innerHTML = `<p class="error">⚠ ${data.error}</p>`;
+            inner.innerHTML = `<p class="error">⚠ ${data.error}</p>`;
           } else {
-            resultDiv.innerHTML = `
-            <h2>Estimated Ground Impact</h2>
-            <div class="result-grid">
-              <div class="result-item">
-                <label>Latitude</label>
-                <div class="value">${data.lat}°</div>
-              </div>
-              <div class="result-item">
-                <label>Longitude</label>
-                <div class="value">${data.lon}°</div>
-              </div>
-            </div>
-            <a class="maps-link" href="${data.maps_url}" target="_blank">Open in Google Maps</a>
-            <div class="direction">Trajectory vector: [${data.direction.join(", ")}]</div>
-          `;
+            const sourceLabels = {
+              radar: "Radar (primary)",
+              "radar+obs": "Radar + Ground Obs",
+              observations: "Ground Observations",
+            };
+            let rows = data.landings
+              .map(
+                (l) => `
+          <tr>
+            <td>${l.label}</td>
+            <td>${l.lat.toFixed(5)}°</td>
+            <td>${l.lon.toFixed(5)}°</td>
+            <td><a href="https://maps.google.com/?q=${l.lat},${l.lon}" target="_blank">Open ↗</a></td>
+          </tr>`,
+              )
+              .join("");
+
+            inner.innerHTML = `
+          <div class="section-title" style="margin-bottom:0.75rem">Strewn Field Results</div>
+          <div class="source-badge">Trajectory source: ${sourceLabels[data.source] || data.source}</div>
+          <table>
+            <thead><tr><th>Mass Class</th><th>Latitude</th><th>Longitude</th><th>Maps</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <br/>
+          <p style="font-size:0.75rem;color:#555">Trajectory vector: [${data.trajectory_direction.join(", ")}]</p>
+          <button class="download-btn" id="dlBtn">⬇ Download GeoJSON</button>
+        `;
+
+            document.getElementById("dlBtn").onclick = () => {
+              const blob = new Blob([JSON.stringify(data.geojson, null, 2)], {
+                type: "application/json",
+              });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = "strewn_field.geojson";
+              a.click();
+            };
           }
         } catch (e) {
-          resultDiv.style.display = "block";
-          resultDiv.innerHTML = `<p class="error">Could not reach the server.</p>`;
+          resultsDiv.style.display = "block";
+          inner.innerHTML = `<p class="error">Could not reach the server.</p>`;
         }
 
         btn.disabled = false;
-        btn.textContent = "Calculate Impact Site";
+        btn.textContent = "Calculate Strewn Field";
+      }
+
+      function loadSampleData() {
+        // Clear existing entries
+        document.getElementById("radar-hits").innerHTML = "";
+        document.getElementById("ground-obs").innerHTML = "";
+        document.getElementById("wind-layers").innerHTML = "";
+        radarCount = 0;
+        obsCount = 0;
+        layerCount = 0;
+
+        // Radar hits (LA area trajectory)
+        const radarData = [
+          { lat: 34.10, lon: -118.30, alt: 50000 },
+          { lat: 34.08, lon: -118.28, alt: 40000 },
+          { lat: 34.06, lon: -118.26, alt: 30000 },
+        ];
+        radarData.forEach((h) => {
+          addRadarHit();
+          document.getElementById(`r${radarCount}-lat`).value = h.lat;
+          document.getElementById(`r${radarCount}-lon`).value = h.lon;
+          document.getElementById(`r${radarCount}-alt`).value = h.alt;
+        });
+
+        // Ground observations
+        const obsData = [
+          { lat: 34.0522, lon: -118.2437, alt: 100, az: 45, el: 30 },
+          { lat: 34.1522, lon: -118.1437, alt: 150, az: 220, el: 25 },
+        ];
+        obsData.forEach((o) => {
+          addGroundObs();
+          document.getElementById(`o${obsCount}-lat`).value = o.lat;
+          document.getElementById(`o${obsCount}-lon`).value = o.lon;
+          document.getElementById(`o${obsCount}-alt`).value = o.alt;
+          document.getElementById(`o${obsCount}-az`).value = o.az;
+          document.getElementById(`o${obsCount}-el`).value = o.el;
+        });
+
+        // Wind — switch to layers mode with sample data
+        setWindMode("layers");
+        const windData = [
+          { alt: 50000, spd: 20, dir: 260 },
+          { alt: 30000, spd: 15, dir: 270 },
+          { alt: 10000, spd: 8, dir: 280 },
+          { alt: 0, spd: 5, dir: 290 },
+        ];
+        windData.forEach((w) => {
+          addWindLayer();
+          document.getElementById(`l${layerCount}-alt`).value = w.alt;
+          document.getElementById(`l${layerCount}-spd`).value = w.spd;
+          document.getElementById(`l${layerCount}-dir`).value = w.dir;
+        });
+
+        // Also set single wind as fallback
+        document.getElementById("wind-spd").value = 10;
+        document.getElementById("wind-dir").value = 270;
       }
     </script>
   </body>
