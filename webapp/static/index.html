@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meteorite Intersection Calculator</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #0d0d0d;
+        color: #e0e0e0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem 1rem;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+        color: #f0a500;
+        margin-bottom: 0.3rem;
+        letter-spacing: 1px;
+      }
+
+      .subtitle {
+        font-size: 0.85rem;
+        color: #888;
+        margin-bottom: 2rem;
+      }
+
+      .card-row {
+        display: flex;
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 860px;
+        flex-wrap: wrap;
+      }
+
+      .card {
+        flex: 1;
+        min-width: 280px;
+        background: #1a1a1a;
+        border: 1px solid #2a2a2a;
+        border-radius: 10px;
+        padding: 1.4rem;
+      }
+
+      .card h2 {
+        font-size: 1rem;
+        color: #f0a500;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #2a2a2a;
+        padding-bottom: 0.5rem;
+      }
+
+      label {
+        display: block;
+        font-size: 0.78rem;
+        color: #aaa;
+        margin-bottom: 0.25rem;
+        margin-top: 0.75rem;
+      }
+
+      input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 6px;
+        color: #e0e0e0;
+        font-size: 0.9rem;
+        transition: border-color 0.2s;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #f0a500;
+      }
+
+      .hint {
+        font-size: 0.7rem;
+        color: #555;
+        margin-top: 0.2rem;
+      }
+
+      button {
+        margin-top: 2rem;
+        width: 100%;
+        max-width: 860px;
+        padding: 0.85rem;
+        background: #f0a500;
+        color: #000;
+        font-size: 1rem;
+        font-weight: 700;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        letter-spacing: 0.5px;
+        transition: background 0.2s;
+      }
+
+      button:hover {
+        background: #ffc233;
+      }
+      button:disabled {
+        background: #555;
+        cursor: not-allowed;
+      }
+
+      #result {
+        margin-top: 1.5rem;
+        width: 100%;
+        max-width: 860px;
+        background: #1a1a1a;
+        border: 1px solid #2a2a2a;
+        border-radius: 10px;
+        padding: 1.4rem;
+        display: none;
+      }
+
+      #result h2 {
+        font-size: 1rem;
+        color: #f0a500;
+        margin-bottom: 1rem;
+      }
+
+      .result-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .result-item label {
+        margin-top: 0;
+        font-size: 0.75rem;
+        color: #888;
+      }
+
+      .result-item .value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #e0e0e0;
+      }
+
+      .maps-link {
+        display: inline-block;
+        margin-top: 0.5rem;
+        padding: 0.55rem 1.1rem;
+        background: #1a73e8;
+        color: #fff;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: background 0.2s;
+      }
+
+      .maps-link:hover {
+        background: #1558b0;
+      }
+
+      .error {
+        color: #ff6b6b;
+        font-size: 0.9rem;
+      }
+
+      .direction {
+        font-size: 0.78rem;
+        color: #666;
+        margin-top: 0.75rem;
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>☄️ Meteorite Intersection Calculator</h1>
+    <p class="subtitle">
+      Enter two ground observations to estimate the impact site.
+    </p>
+
+    <div class="card-row">
+      <div class="card">
+        <h2>Observation 1</h2>
+
+        <label>Latitude (°)</label>
+        <input type="number" id="lat1" step="any" placeholder="e.g. 34.0522" />
+        <div class="hint">Positive = North, Negative = South</div>
+
+        <label>Longitude (°)</label>
+        <input
+          type="number"
+          id="lon1"
+          step="any"
+          placeholder="e.g. -118.2437"
+        />
+        <div class="hint">Positive = East, Negative = West</div>
+
+        <label>Altitude (m)</label>
+        <input
+          type="number"
+          id="alt1"
+          step="any"
+          placeholder="e.g. 100"
+          value="0"
+        />
+
+        <label>Azimuth (°)</label>
+        <input
+          type="number"
+          id="az1"
+          step="any"
+          placeholder="0=N  90=E  180=S  270=W"
+        />
+
+        <label>Elevation above horizon (°)</label>
+        <input type="number" id="el1" step="any" placeholder="e.g. 30" />
+      </div>
+
+      <div class="card">
+        <h2>Observation 2</h2>
+
+        <label>Latitude (°)</label>
+        <input type="number" id="lat2" step="any" placeholder="e.g. 34.1522" />
+
+        <label>Longitude (°)</label>
+        <input
+          type="number"
+          id="lon2"
+          step="any"
+          placeholder="e.g. -118.1437"
+        />
+
+        <label>Altitude (m)</label>
+        <input
+          type="number"
+          id="alt2"
+          step="any"
+          placeholder="e.g. 150"
+          value="0"
+        />
+
+        <label>Azimuth (°)</label>
+        <input
+          type="number"
+          id="az2"
+          step="any"
+          placeholder="0=N  90=E  180=S  270=W"
+        />
+
+        <label>Elevation above horizon (°)</label>
+        <input type="number" id="el2" step="any" placeholder="e.g. 25" />
+      </div>
+    </div>
+
+    <button id="calcBtn" onclick="calculate()">Calculate Impact Site</button>
+
+    <div id="result">
+      <h2>Estimated Ground Impact</h2>
+      <div class="result-grid">
+        <div class="result-item">
+          <label>Latitude</label>
+          <div class="value" id="resLat">—</div>
+        </div>
+        <div class="result-item">
+          <label>Longitude</label>
+          <div class="value" id="resLon">—</div>
+        </div>
+      </div>
+      <a id="mapsLink" class="maps-link" href="#" target="_blank"
+        >Open in Google Maps</a
+      >
+      <div class="direction" id="resDir"></div>
+    </div>
+
+    <script>
+      async function calculate() {
+        const btn = document.getElementById("calcBtn");
+        const resultDiv = document.getElementById("result");
+
+        const get = (id) => parseFloat(document.getElementById(id).value);
+
+        const obs1 = {
+          lat: get("lat1"),
+          lon: get("lon1"),
+          alt: get("alt1"),
+          azimuth: get("az1"),
+          elevation: get("el1"),
+        };
+        const obs2 = {
+          lat: get("lat2"),
+          lon: get("lon2"),
+          alt: get("alt2"),
+          azimuth: get("az2"),
+          elevation: get("el2"),
+        };
+
+        for (const [key, val] of Object.entries({ ...obs1, ...obs2 })) {
+          if (isNaN(val)) {
+            resultDiv.style.display = "block";
+            resultDiv.innerHTML = `<p class="error">Please fill in all fields.</p>`;
+            return;
+          }
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Calculating…";
+
+        try {
+          const resp = await fetch("/calculate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ obs1, obs2 }),
+          });
+
+          const data = await resp.json();
+          resultDiv.style.display = "block";
+
+          if (data.error) {
+            resultDiv.innerHTML = `<p class="error">⚠ ${data.error}</p>`;
+          } else {
+            resultDiv.innerHTML = `
+            <h2>Estimated Ground Impact</h2>
+            <div class="result-grid">
+              <div class="result-item">
+                <label>Latitude</label>
+                <div class="value">${data.lat}°</div>
+              </div>
+              <div class="result-item">
+                <label>Longitude</label>
+                <div class="value">${data.lon}°</div>
+              </div>
+            </div>
+            <a class="maps-link" href="${data.maps_url}" target="_blank">Open in Google Maps</a>
+            <div class="direction">Trajectory vector: [${data.direction.join(", ")}]</div>
+          `;
+          }
+        } catch (e) {
+          resultDiv.style.display = "block";
+          resultDiv.innerHTML = `<p class="error">Could not reach the server.</p>`;
+        }
+
+        btn.disabled = false;
+        btn.textContent = "Calculate Impact Site";
+      }
+    </script>
+  </body>
+</html>
