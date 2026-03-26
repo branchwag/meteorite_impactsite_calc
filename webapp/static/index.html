@@ -574,7 +574,8 @@
           </table>
           <br/>
           <p style="font-size:0.75rem;color:#555">Trajectory vector: [${data.trajectory_direction.join(", ")}]</p>
-          <button class="download-btn" id="dlBtn">⬇ Download GeoJSON</button>
+          <button class="download-btn" id="dlBtn">Download GeoJSON</button>
+          <button class="download-btn" id="dlKmz" style="margin-left:0.5rem;background:#1a3b6b">Download KMZ (Google Earth)</button>
         `;
 
             document.getElementById("dlBtn").onclick = () => {
@@ -584,6 +585,19 @@
               const a = document.createElement("a");
               a.href = URL.createObjectURL(blob);
               a.download = "strewn_field.geojson";
+              a.click();
+            };
+
+            document.getElementById("dlKmz").onclick = async () => {
+              const resp = await fetch("/download_kmz", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ geojson: data.geojson }),
+              });
+              const blob = await resp.blob();
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = "strewn_field.kmz";
               a.click();
             };
           }

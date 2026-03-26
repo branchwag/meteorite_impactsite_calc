@@ -1,6 +1,9 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 import numpy as np
 import json
+import io
+import zipfile
+import xml.etree.ElementTree as ET
 
 app = Flask(__name__, static_folder="static")
 
@@ -185,6 +188,91 @@ def calculate():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+ELLIPSE_COLORS = [
+    "ff0000ff",  # red - 1kg+
+    "ff0088ff",  # orange
+    "ff00ddff",  # yellow
+    "ff00ff88",  # green
+    "ffff4444",  # blue - 1g
+]
+
+def geojson_to_kml(geojson):
+    kml = ET.Element("kml", xmlns="http://www.opengis.net/kml/2.2")
+    doc = ET.SubElement(kml, "Document")
+    ET.SubElement(doc, "name").text = "Meteorite Strewn Field"
+
+    # Styles for ellipse fills
+    for i, color in enumerate(ELLIPSE_COLORS):
+        style = ET.SubElement(doc, "Style", id=f"ellipse{i}")
+        ls = ET.SubElement(style, "LineStyle")
+        ET.SubElement(ls, "color").text = color
+        ET.SubElement(ls, "width").text = "2"
+        ps = ET.SubElement(style, "PolyStyle")
+        ET.SubElement(ps, "color").text = "40" + color[2:]  # semi-transparent fill
+        ET.SubElement(ps, "outline").text = "1"
+
+    # Style for centerline
+    style = ET.SubElement(doc, "Style", id="centerline")
+    ls = ET.SubElement(style, "LineStyle")
+    ET.SubElement(ls, "color").text = "ff00ffff"  # yellow
+    ET.SubElement(ls, "width").text = "3"
+
+    # Style for landing points
+    style = ET.SubElement(doc, "Style", id="landing")
+    is_ = ET.SubElement(style, "IconStyle")
+    ET.SubElement(is_, "color").text = "ff0000ff"
+    ET.SubElement(is_, "scale").text = "1.0"
+    icon = ET.SubElement(is_, "Icon")
+    ET.SubElement(icon, "href").text = "http://maps.google.com/mapfiles/kml/paddle/red-circle.png"
+
+    ellipse_idx = 0
+    for feature in geojson["features"]:
+        props = feature["properties"]
+        geom = feature["geometry"]
+        pm = ET.SubElement(doc, "Placemark")
+        ET.SubElement(pm, "name").text = props.get("name", "")
+
+        if geom["type"] == "Point":
+            ET.SubElement(pm, "styleUrl").text = "#landing"
+            pt = ET.SubElement(pm, "Point")
+            lon, lat = geom["coordinates"]
+            ET.SubElement(pt, "coordinates").text = f"{lon},{lat},0"
+
+        elif geom["type"] == "LineString":
+            ET.SubElement(pm, "styleUrl").text = "#centerline"
+            ls = ET.SubElement(pm, "LineString")
+            ET.SubElement(ls, "tessellate").text = "1"
+            coords = " ".join(f"{c[0]},{c[1]},0" for c in geom["coordinates"])
+            ET.SubElement(ls, "coordinates").text = coords
+
+        elif geom["type"] == "Polygon":
+            style_id = f"ellipse{ellipse_idx % len(ELLIPSE_COLORS)}"
+            ellipse_idx += 1
+            ET.SubElement(pm, "styleUrl").text = f"#{style_id}"
+            poly = ET.SubElement(pm, "Polygon")
+            ET.SubElement(poly, "tessellate").text = "1"
+            ob = ET.SubElement(poly, "outerBoundaryIs")
+            lr = ET.SubElement(ob, "LinearRing")
+            coords = " ".join(f"{c[0]},{c[1]},0" for c in geom["coordinates"][0])
+            ET.SubElement(lr, "coordinates").text = coords
+
+    return ET.tostring(kml, encoding="unicode", xml_declaration=True)
+
+@app.route("/download_kmz", methods=["POST"])
+def download_kmz():
+    data = request.get_json()
+    geojson = data.get("geojson")
+    if not geojson:
+        return jsonify({"error": "No geojson provided"}), 400
+    kml_str = geojson_to_kml(geojson)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("doc.kml", kml_str)
+    buf.seek(0)
+    return Response(buf.read(),
+                    mimetype="application/vnd.google-earth.kmz",
+                    headers={"Content-Disposition": "attachment; filename=strewn_field.kmz"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
