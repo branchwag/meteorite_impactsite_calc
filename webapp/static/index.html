@@ -392,7 +392,8 @@
       <div class="row">
         <div class="field"><label>Latitude (°)</label><input type="number" step="any" id="r${id}-lat" placeholder="34.0522"/></div>
         <div class="field"><label>Longitude (°)</label><input type="number" step="any" id="r${id}-lon" placeholder="-118.2437"/></div>
-        <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="r${id}-alt" placeholder="50000"/></div>
+        <div class="field"><label>Altitude (ft)</label><input type="number" step="any" id="r${id}-ft" placeholder="164042" oninput="ftToM('r${id}')"/></div>
+        <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="r${id}-alt" placeholder="50000" readonly style="color:#888;border-style:dashed"/></div>
       </div>`;
         document.getElementById("radar-hits").appendChild(div);
       }
@@ -439,6 +440,12 @@
         <div class="field"><label>Direction FROM (°)</label><input type="number" step="any" id="l${id}-dir" placeholder="270"/></div>
       </div>`;
         document.getElementById("wind-layers").appendChild(div);
+      }
+
+      function ftToM(prefix) {
+        const ft = parseFloat(document.getElementById(`${prefix}-ft`)?.value);
+        const mField = document.getElementById(`${prefix}-alt`);
+        mField.value = isNaN(ft) ? "" : (ft * 0.3048).toFixed(1);
       }
 
       function removeEntry(id) {
@@ -590,6 +597,61 @@
 
         btn.disabled = false;
         btn.textContent = "Calculate Strewn Field";
+      }
+
+      function loadSampleData() {
+        document.getElementById("radar-hits").innerHTML = "";
+        document.getElementById("ground-obs").innerHTML = "";
+        document.getElementById("wind-layers").innerHTML = "";
+        radarCount = 0;
+        obsCount = 0;
+        layerCount = 0;
+
+        // Radar hits — altitudes in feet as they'd come from the toolkit
+        const radarData = [
+          { lat: 34.10, lon: -118.30, ft: 164042 },
+          { lat: 34.08, lon: -118.28, ft: 131234 },
+          { lat: 34.06, lon: -118.26, ft: 98425 },
+        ];
+        radarData.forEach((h) => {
+          addRadarHit();
+          document.getElementById(`r${radarCount}-lat`).value = h.lat;
+          document.getElementById(`r${radarCount}-lon`).value = h.lon;
+          document.getElementById(`r${radarCount}-ft`).value = h.ft;
+          ftToM(`r${radarCount}`);
+        });
+
+        // Ground observations
+        const obsData = [
+          { lat: 34.0522, lon: -118.2437, alt: 100, az: 45, el: 30 },
+          { lat: 34.1522, lon: -118.1437, alt: 150, az: 220, el: 25 },
+        ];
+        obsData.forEach((o) => {
+          addGroundObs();
+          document.getElementById(`o${obsCount}-lat`).value = o.lat;
+          document.getElementById(`o${obsCount}-lon`).value = o.lon;
+          document.getElementById(`o${obsCount}-alt`).value = o.alt;
+          document.getElementById(`o${obsCount}-az`).value = o.az;
+          document.getElementById(`o${obsCount}-el`).value = o.el;
+        });
+
+        // Wind layers
+        setWindMode("layers");
+        const windData = [
+          { alt: 50000, spd: 20, dir: 260 },
+          { alt: 30000, spd: 15, dir: 270 },
+          { alt: 10000, spd: 8, dir: 280 },
+          { alt: 0, spd: 5, dir: 290 },
+        ];
+        windData.forEach((w) => {
+          addWindLayer();
+          document.getElementById(`l${layerCount}-alt`).value = w.alt;
+          document.getElementById(`l${layerCount}-spd`).value = w.spd;
+          document.getElementById(`l${layerCount}-dir`).value = w.dir;
+        });
+
+        document.getElementById("wind-spd").value = 10;
+        document.getElementById("wind-dir").value = 270;
       }
 
     </script>
