@@ -275,6 +275,75 @@
       strewn field.
     </p>
 
+    <!-- EXPLANATION TOGGLE -->
+    <button class="calc-btn" onclick="toggleExplanation()" style="background:#2a2a2a;color:#f0a500;border:1px solid #f0a500;margin-bottom:1.2rem;max-width:900px" id="explainToggle">
+      Calculation Explanation ▼
+    </button>
+    <div id="explanation" style="display:none;width:100%;max-width:900px;margin-bottom:1.2rem">
+      <div class="section" style="font-size:0.82rem;line-height:1.6;color:#ccc">
+
+        <h3 style="color:#f0a500;margin-bottom:0.8rem">1. Coordinate Conversion (LLA to ECEF)</h3>
+        <p>All lat/lon/altitude inputs are converted to Earth-Centered Earth-Fixed (ECEF) cartesian coordinates using a spherical Earth model (R = 6,371,000 m):</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">r = R + altitude
+x = r * cos(lat) * cos(lon)
+y = r * cos(lat) * sin(lon)
+z = r * sin(lat)</pre>
+
+        <h3 style="color:#f0a500;margin:1rem 0 0.8rem">2. Trajectory Determination</h3>
+
+        <p><strong style="color:#e0e0e0">2+ radar hits (best accuracy):</strong> A least-squares line is fit through the ECEF points using SVD (Singular Value Decomposition). The centroid of all points becomes the trajectory reference point, and the first principal component gives the direction:</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">centroid = mean(points)
+U, S, Vt = SVD(points - centroid)
+direction = Vt[0]  (flipped downward if needed)</pre>
+
+        <p><strong style="color:#e0e0e0">1 radar hit + ground observations:</strong> The trajectory direction is derived from ground observations (see below), but the radar hit anchors the line in 3D space.</p>
+
+        <p><strong style="color:#e0e0e0">1 radar hit alone (vertical descent):</strong> The trajectory is assumed to go straight down — the direction vector points from the radar hit toward Earth's center:</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">direction = -position / |position|</pre>
+
+        <p><strong style="color:#e0e0e0">2+ ground observations:</strong> Each observer defines a vertical plane through the fireball. The observer's azimuth and elevation are converted to a ray in ENU (East-North-Up), then rotated to ECEF:</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">ray_enu = [cos(el)*sin(az), cos(el)*cos(az), sin(el)]
+ray_ecef = R_enu_to_ecef * ray_enu</pre>
+        <p>The plane normal is the cross product of the ray and the observer's local "up" vector:</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">normal = cross(ray, up)
+normal = normal / |normal|</pre>
+        <p>Two planes intersect in a line — the trajectory. The direction is:</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">direction = cross(n1, n2)</pre>
+        <p>A point on the line is found by solving:</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">[n1]           [n1 . p1]
+[n2] * point = [n2 . p2]
+[dir]          [  0    ]</pre>
+
+        <h3 style="color:#f0a500;margin:1rem 0 0.8rem">3. Wind Vector</h3>
+        <p>Wind direction follows meteorological convention (direction wind blows FROM). It's converted to a movement vector in ENU:</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">toward = (from_direction + 180) mod 360
+wind_enu = [sin(toward), cos(toward), 0]</pre>
+        <p>In layers mode, the wind at a given altitude uses the first layer whose altitude is at or below the fragment's current altitude (sorted highest to lowest).</p>
+
+        <h3 style="color:#f0a500;margin:1rem 0 0.8rem">4. Fragment Landing Simulation</h3>
+        <p>For each of the 5 mass classes (1g, 10g, 100g, 500g, 1kg+), the fragment is walked down the trajectory in 1-second time steps. Terminal velocity scales with mass:</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">v_terminal = 50 * (mass_g / 100) ^ (1/6)  m/s</pre>
+        <p>Each time step:</p>
+        <ol style="margin:0.5rem 0 0.5rem 1.5rem">
+          <li>Move along trajectory: <code style="color:#f0a500">pos += direction * v_terminal</code></li>
+          <li>Look up wind at current altitude</li>
+          <li>Apply wind drift: <code style="color:#f0a500">pos += R_enu_to_ecef * wind_enu</code></li>
+          <li>Stop when altitude reaches 0</li>
+        </ol>
+        <p>Heavier fragments fall faster and drift less, landing uprange. Lighter fragments drift further downwind.</p>
+
+        <h3 style="color:#f0a500;margin:1rem 0 0.8rem">5. Strewn Field Ellipses</h3>
+        <p>Each landing point gets an ellipse drawn on the ground. The semi-minor axis is 5,000 m and the semi-major axis is 7,500 m (1.5x), aligned with the trajectory direction projected onto the horizontal plane:</p>
+        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">major_axis = trajectory direction (z zeroed, normalized)
+minor_axis = cross(major_axis, [0, 0, 1])
+
+for angle in 0..360:
+  offset = cos(angle) * 7500 * major_axis
+         + sin(angle) * 5000 * minor_axis</pre>
+
+      </div>
+    </div>
+
     <!-- RADAR HITS -->
     <div class="section">
       <div class="section-title">
@@ -438,6 +507,18 @@
         <div class="field"><label>Direction FROM (°)</label><input type="number" step="any" id="l${id}-dir" placeholder="270"/></div>
       </div>`;
         document.getElementById("wind-layers").appendChild(div);
+      }
+
+      function toggleExplanation() {
+        const el = document.getElementById("explanation");
+        const btn = document.getElementById("explainToggle");
+        if (el.style.display === "none") {
+          el.style.display = "block";
+          btn.textContent = "Calculation Explanation \u25B2";
+        } else {
+          el.style.display = "none";
+          btn.textContent = "Calculation Explanation \u25BC";
+        }
       }
 
       function ftToM(prefix) {
