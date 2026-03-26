@@ -365,14 +365,9 @@
       </div>
     </div>
 
-    <div style="display:flex;gap:0.75rem;width:100%;max-width:900px;margin-bottom:1.2rem">
-      <button class="calc-btn" id="calcBtn" onclick="calculate()" style="margin-bottom:0">
-        Calculate Strewn Field
-      </button>
-      <button class="calc-btn" onclick="loadSampleData()" style="margin-bottom:0;background:#2a2a2a;color:#f0a500;border:1px solid #f0a500;min-width:180px;flex:0 0 auto">
-        Load Sample Data
-      </button>
-    </div>
+    <button class="calc-btn" id="calcBtn" onclick="calculate()">
+      Calculate Strewn Field
+    </button>
 
     <div id="results">
       <div class="results-section" id="results-inner"></div>
@@ -597,61 +592,6 @@
         btn.textContent = "Calculate Strewn Field";
       }
 
-      function loadSampleData() {
-        // Clear existing entries
-        document.getElementById("radar-hits").innerHTML = "";
-        document.getElementById("ground-obs").innerHTML = "";
-        document.getElementById("wind-layers").innerHTML = "";
-        radarCount = 0;
-        obsCount = 0;
-        layerCount = 0;
-
-        // Radar hits (LA area trajectory)
-        const radarData = [
-          { lat: 34.10, lon: -118.30, alt: 50000 },
-          { lat: 34.08, lon: -118.28, alt: 40000 },
-          { lat: 34.06, lon: -118.26, alt: 30000 },
-        ];
-        radarData.forEach((h) => {
-          addRadarHit();
-          document.getElementById(`r${radarCount}-lat`).value = h.lat;
-          document.getElementById(`r${radarCount}-lon`).value = h.lon;
-          document.getElementById(`r${radarCount}-alt`).value = h.alt;
-        });
-
-        // Ground observations
-        const obsData = [
-          { lat: 34.0522, lon: -118.2437, alt: 100, az: 45, el: 30 },
-          { lat: 34.1522, lon: -118.1437, alt: 150, az: 220, el: 25 },
-        ];
-        obsData.forEach((o) => {
-          addGroundObs();
-          document.getElementById(`o${obsCount}-lat`).value = o.lat;
-          document.getElementById(`o${obsCount}-lon`).value = o.lon;
-          document.getElementById(`o${obsCount}-alt`).value = o.alt;
-          document.getElementById(`o${obsCount}-az`).value = o.az;
-          document.getElementById(`o${obsCount}-el`).value = o.el;
-        });
-
-        // Wind — switch to layers mode with sample data
-        setWindMode("layers");
-        const windData = [
-          { alt: 50000, spd: 20, dir: 260 },
-          { alt: 30000, spd: 15, dir: 270 },
-          { alt: 10000, spd: 8, dir: 280 },
-          { alt: 0, spd: 5, dir: 290 },
-        ];
-        windData.forEach((w) => {
-          addWindLayer();
-          document.getElementById(`l${layerCount}-alt`).value = w.alt;
-          document.getElementById(`l${layerCount}-spd`).value = w.spd;
-          document.getElementById(`l${layerCount}-dir`).value = w.dir;
-        });
-
-        // Also set single wind as fallback
-        document.getElementById("wind-spd").value = 10;
-        document.getElementById("wind-dir").value = 270;
-      }
     </script>
   </body>
 </html>
