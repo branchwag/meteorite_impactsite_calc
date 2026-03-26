@@ -1,6 +1,6 @@
 # Meteorite Strewn Field Calculator
 
-A tool for estimating meteorite strewn fields by intersecting observation planes, fitting radar trajectories, applying wind correction, and modeling fragment scatter by mass. Includes a standalone Python script and a local network web app.
+A local network web app for estimating meteorite strewn fields by intersecting observation planes, fitting radar trajectories, applying wind correction, and modeling fragment scatter by mass.
 
 ---
 
@@ -8,7 +8,6 @@ A tool for estimating meteorite strewn fields by intersecting observation planes
 
 ```
 plane_intersection/
-├── intersectioncalc.py   # Standalone CLI calculator
 ├── README.md
 ├── .gitignore
 └── webapp/
@@ -23,17 +22,19 @@ plane_intersection/
 
 Each observer watches a fireball cross the sky and records their location plus the azimuth and elevation of the fireball. Each observation defines a vertical plane through the sky — the meteorite's trajectory is the line where two planes intersect.
 
-If radar data is available, the trajectory is instead fit directly through the radar hit points using least squares, which is significantly more accurate. Wind correction is then applied per altitude layer to drift each fragment mass class to its estimated landing position, producing a strewn field ellipse for each class.
+If radar data is available, the trajectory is instead fit directly through the radar hit points using least squares, which is significantly more accurate. A single radar hit assumes vertical descent. Wind correction is then applied per altitude layer to drift each fragment mass class to its estimated landing position, producing a strewn field ellipse for each class.
 
 ---
 
 ## Inputs
 
-**Radar hits** — lat, lon, altitude (meters) from the middle of each radar return. Two or more hits gives the most accurate trajectory. One hit can be combined with a ground observation.
+**Radar hits** — lat, lon, altitude from the middle of each radar return. Altitude is entered in feet (as provided by the NOAA Weather and Climate Toolkit) and automatically converted to meters. A single hit assumes vertical descent; two or more fits a trajectory line. Ground observations can optionally supplement the radar data.
 
-**Ground observations** — lat, lon, altitude of the observer plus azimuth (compass bearing the fireball traveled toward) and elevation above the horizon in degrees. Used when radar data is unavailable or to supplement a single radar hit.
+**Ground observations** (optional) — lat, lon, altitude of the observer plus azimuth (compass bearing the fireball traveled toward) and elevation above the horizon in degrees. Used when radar data is unavailable or to supplement a single radar hit.
 
 **Wind data** — either a single average wind speed and direction, or speed and direction at multiple altitude layers (e.g. from a weather balloon sounding at weather.uwyo.edu). Direction follows meteorological convention: the direction the wind is blowing FROM.
+
+A **Load Sample Data** button is available to pre-fill the form with example inputs for testing.
 
 ---
 
@@ -42,33 +43,20 @@ If radar data is available, the trajectory is instead fit directly through the r
 - Estimated landing coordinates for five fragment mass classes: 1g, 10g, 100g, 500g, 1kg+
 - Strewn field ellipses per mass class
 - Trajectory centerline
-- GeoJSON file loadable in Google Earth, Google Maps, or geojson.io
+- Google Maps links for each landing point
+- GeoJSON file download (loadable in Google Maps or geojson.io)
+- KMZ file download (loadable in Google Earth)
 
 ---
 
-## Standalone Script
-
-Edit the observation values at the top of `intersectioncalc.py`, then run:
+## Setup
 
 ```bash
 conda activate meteorite
-python intersectioncalc.py
+conda install numpy flask
 ```
 
-Output is printed to the console and saved as `strewn_field.geojson` in the same directory.
-
----
-
-## Web App (Local Network)
-
-### Setup
-
-```bash
-conda activate meteorite
-conda install flask
-```
-
-### Run
+## Run
 
 ```bash
 cd webapp
@@ -82,7 +70,7 @@ pkill -f app.py
 python app.py
 ```
 
-### Access
+## Access
 
 Find your local IP:
 
@@ -96,16 +84,14 @@ Use the `wlan0` address, e.g. `192.168.1.213`. Anyone on the same WiFi opens:
 http://192.168.1.213:5000
 ```
 
-The GeoJSON download button appears in the results after each calculation.
-
 ---
 
 ## Dependencies
 
-| Package | Used by      |
-|---------|--------------|
-| numpy   | Both         |
-| flask   | Web app only |
+| Package | Purpose                    |
+|---------|----------------------------|
+| numpy   | Coordinate math and linear algebra |
+| flask   | Web server                 |
 
 ```bash
 conda install numpy flask
