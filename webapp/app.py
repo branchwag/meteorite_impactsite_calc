@@ -160,11 +160,16 @@ def calculate():
             _, traj_dir = fit_trajectory_from_observations(ground_obs)
             traj_point = lla_to_ecef(radar_hits[0]["lat"], radar_hits[0]["lon"], radar_hits[0]["alt"])
             source = "radar+obs"
+        elif len(radar_hits) == 1:
+            traj_point = lla_to_ecef(radar_hits[0]["lat"], radar_hits[0]["lon"], radar_hits[0]["alt"])
+            # Vertical descent — straight down from the radar hit
+            traj_dir = -traj_point / np.linalg.norm(traj_point)
+            source = "radar-single"
         elif len(ground_obs) >= 2:
             traj_point, traj_dir = fit_trajectory_from_observations(ground_obs)
             source = "observations"
         else:
-            return jsonify({"error": "Need at least 2 radar hits, 2 ground observations, or 1 of each."}), 400
+            return jsonify({"error": "Need at least 1 radar hit or 2 ground observations."}), 400
 
         if traj_point is None or traj_dir is None:
             return jsonify({"error": "Could not compute trajectory — check that azimuths are not identical."}), 400

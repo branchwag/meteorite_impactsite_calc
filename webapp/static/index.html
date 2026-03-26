@@ -282,8 +282,8 @@
         <button class="add-btn" onclick="addRadarHit()">+ Add Hit</button>
       </div>
       <p class="hint" style="margin-bottom: 0.75rem">
-        Lat/lon/altitude from the middle of each radar return. At least 2 hits
-        gives the most accurate trajectory.
+        Lat/lon/altitude from the middle of each radar return. One hit assumes
+        vertical descent; two or more fits a trajectory line.
       </p>
       <div id="radar-hits"></div>
     </div>
@@ -466,8 +466,7 @@
           mode === "layers" ? "" : "none";
       }
 
-      // init with 2 empty radar hits
-      addRadarHit();
+      // init with 1 empty radar hit
       addRadarHit();
       setWindMode("single");
 
@@ -551,6 +550,7 @@
             const sourceLabels = {
               radar: "Radar (primary)",
               "radar+obs": "Radar + Ground Obs",
+              "radar-single": "Single Radar Hit (vertical descent)",
               observations: "Ground Observations",
             };
             let rows = data.landings
