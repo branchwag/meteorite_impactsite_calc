@@ -86,14 +86,24 @@ def get_wind_at_altitude(alt_m, wind_mode, wind_single, wind_layers):
 MASS_CLASSES = [("1kg+", 1000), ("500g", 500), ("100g", 100), ("10g", 10), ("1g", 1)]
 STREWN_WIDTH_M = 5000
 
-def fragment_landing(traj_point, traj_dir, mass_g, wind_mode, wind_single, wind_layers):
-    terminal_v = 50.0 * (mass_g / 100.0) ** (1/6)
+def terminal_velocity(mass_g, density_g_cm3=3.2, Cd=0.8):
+    # V = sqrt(8 * D * g * r / (3 * rho_air * Cd)) — from force balance at terminal velocity
+    mass_kg = mass_g / 1000.0
+    density_kg_m3 = density_g_cm3 * 1000.0
+    r_m = (3.0 * mass_kg / (4.0 * np.pi * density_kg_m3)) ** (1.0 / 3.0)
+    rho_air = 1.2  # kg/m³, sea level approximation
+    g = 9.81
+    return np.sqrt(8.0 * density_kg_m3 * g * r_m / (3.0 * rho_air * Cd))
+
+def fragment_landing(traj_point, traj_dir, mass_g, wind_mode, wind_single, wind_layers,
+                     density_g_cm3=3.2, Cd=0.8):
+    term_v = terminal_velocity(mass_g, density_g_cm3, Cd)
     pos = traj_point.copy()
     for _ in range(300_000):
         _, _, alt = ecef_to_lla(pos)
         if alt <= 0:
             return pos
-        pos = pos + traj_dir * terminal_v
+        pos = pos + traj_dir * term_v
         lat, lon, _ = ecef_to_lla(pos)
         R = enu_to_ecef_rotation(lat, lon)
         spd, dirn = get_wind_at_altitude(alt, wind_mode, wind_single, wind_layers)
@@ -114,10 +124,12 @@ def make_ellipse(center_lat, center_lon, semi_minor_m, semi_major_m, traj_dir, n
         coords.append([lon, lat])
     return coords
 
-def compute_strewn_field(traj_point, traj_dir, wind_mode, wind_single, wind_layers):
+def compute_strewn_field(traj_point, traj_dir, wind_mode, wind_single, wind_layers,
+                         density_g_cm3=3.2, Cd=0.8):
     landings = []
     for label, mass_g in MASS_CLASSES:
-        ecef = fragment_landing(traj_point, traj_dir, mass_g, wind_mode, wind_single, wind_layers)
+        ecef = fragment_landing(traj_point, traj_dir, mass_g, wind_mode, wind_single, wind_layers,
+                                density_g_cm3, Cd)
         lat, lon, _ = ecef_to_lla(ecef)
         landings.append({"label": label, "mass_g": mass_g, "lat": round(lat, 5), "lon": round(lon, 5)})
 
@@ -150,11 +162,17 @@ def index():
 def calculate():
     data = request.get_json()
     try:
-        radar_hits  = data.get("radar_hits", [])
-        ground_obs  = data.get("ground_obs", [])
-        wind_mode   = data.get("wind_mode", "single")
-        wind_single = data.get("wind_single", {"speed_ms": 0, "direction_deg": 0})
-        wind_layers = data.get("wind_layers", [])
+        radar_hits      = data.get("radar_hits", [])
+        ground_obs      = data.get("ground_obs", [])
+        wind_mode       = data.get("wind_mode", "single")
+        wind_single     = data.get("wind_single", {"speed_ms": 0, "direction_deg": 0})
+        wind_layers     = data.get("wind_layers", [])
+        density_g_cm3   = float(data.get("density_g_cm3", 3.2))
+        Cd              = float(data.get("Cd", 0.8))
+        if density_g_cm3 <= 0:
+            density_g_cm3 = 3.2
+        if Cd <= 0:
+            Cd = 0.8
 
         if len(radar_hits) >= 2:
             traj_point, traj_dir = fit_trajectory_from_radar(radar_hits)
@@ -177,7 +195,8 @@ def calculate():
         if traj_point is None or traj_dir is None:
             return jsonify({"error": "Could not compute trajectory — check that azimuths are not identical."}), 400
 
-        landings, geojson = compute_strewn_field(traj_point, traj_dir, wind_mode, wind_single, wind_layers)
+        landings, geojson = compute_strewn_field(traj_point, traj_dir, wind_mode, wind_single, wind_layers,
+                                                  density_g_cm3, Cd)
 
         return jsonify({
             "source": source,
@@ -188,6 +207,110 @@ def calculate():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+def _nexrad_resolution_volume(range_km, beamwidth_deg=1.0, gate_m=250.0):
+    """Two-way Gaussian beam resolution volume for NEXRAD."""
+    import math
+    R_m = range_km * 1000.0
+    theta = math.radians(beamwidth_deg)
+    return (math.pi / (8 * math.log(2))) * theta**2 * R_m**2 * gate_m
+
+@app.route("/dbz", methods=["POST"])
+def dbz_estimator():
+    data = request.get_json()
+    try:
+        import math
+        n_fragments   = int(data.get("n_fragments", 1))
+        diameter_cm   = float(data.get("diameter_cm", 10.0))
+        range_km      = float(data.get("range_km", 80.0))
+        wavelength_cm = float(data.get("wavelength_cm", 10.0))
+
+        if n_fragments < 1 or diameter_cm <= 0 or range_km <= 0 or wavelength_cm <= 0:
+            return jsonify({"error": "All values must be positive."}), 400
+
+        r_m           = (diameter_cm / 100.0) / 2.0
+        sigma_per     = math.pi * r_m**2          # m²
+        sigma_total   = n_fragments * sigma_per
+
+        dbsm_per   = 10 * math.log10(sigma_per)
+        dbsm_total = 10 * math.log10(sigma_total)
+
+        lambda_mm = wavelength_cm * 10.0
+        K2        = 0.93  # |K|² for liquid water — standard radar calibration constant
+        V_r       = _nexrad_resolution_volume(range_km)
+
+        sigma_total_mm2 = sigma_total * 1e6
+        Ze  = (lambda_mm**4 / (math.pi**5 * K2)) * (sigma_total_mm2 / V_r)
+        dbz = 10 * math.log10(Ze)
+
+        if dbz < 0:
+            context = "Below typical NEXRAD noise floor — marginally detectable at best."
+        elif dbz < 10:
+            context = "Weak but potentially detectable signal, especially at high altitude where clutter is absent."
+        elif dbz < 20:
+            context = "Detectable signal, consistent with confirmed radar-tracked meteorite falls (e.g., Hamburg 2018)."
+        elif dbz < 35:
+            context = "Strong signal — easy NEXRAD detection."
+        else:
+            context = "Very strong return — comparable to moderate rainfall."
+
+        return jsonify({
+            "sigma_per_m2":        round(sigma_per, 6),
+            "sigma_total_m2":      round(sigma_total, 6),
+            "dbsm_per":            round(dbsm_per, 2),
+            "dbsm_total":          round(dbsm_total, 2),
+            "dbz":                 round(dbz, 1),
+            "resolution_volume_m3": round(V_r),
+            "context":             context,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/inverse_dbz", methods=["POST"])
+def inverse_dbz():
+    data = request.get_json()
+    try:
+        import math
+        dbz           = float(data.get("dbz", 0.0))
+        range_km      = float(data.get("range_km", 80.0))
+        wavelength_cm = float(data.get("wavelength_cm", 10.0))
+        n_fragments   = data.get("n_fragments")   # optional: given n, infer diameter
+        diameter_cm   = data.get("diameter_cm")   # optional: given d, infer n
+
+        if range_km <= 0 or wavelength_cm <= 0:
+            return jsonify({"error": "Range and wavelength must be positive."}), 400
+
+        lambda_mm = wavelength_cm * 10.0
+        K2        = 0.93
+        V_r       = _nexrad_resolution_volume(range_km)
+
+        Ze              = 10 ** (dbz / 10.0)          # mm⁶/m³
+        sigma_total_mm2 = Ze * V_r * math.pi**5 * K2 / lambda_mm**4
+        sigma_total_m2  = sigma_total_mm2 / 1e6
+        dbsm_total      = 10 * math.log10(sigma_total_m2) if sigma_total_m2 > 0 else -999
+
+        result = {
+            "sigma_total_m2": round(sigma_total_m2, 6),
+            "dbsm_total":     round(dbsm_total, 2),
+        }
+
+        if n_fragments is not None and int(n_fragments) > 0:
+            n  = int(n_fragments)
+            sp = sigma_total_m2 / n
+            r  = math.sqrt(sp / math.pi)
+            result["implied_diameter_cm"] = round(r * 2 * 100, 2)
+            result["implied_diameter_in"] = round(r * 2 * 100 / 2.54, 2)
+
+        if diameter_cm is not None and float(diameter_cm) > 0:
+            r_m = (float(diameter_cm) / 100.0) / 2.0
+            sp  = math.pi * r_m**2
+            result["implied_fragment_count"] = round(sigma_total_m2 / sp, 1)
+
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 ELLIPSE_COLORS = [
     "ff0000ff",  # red - 1kg+

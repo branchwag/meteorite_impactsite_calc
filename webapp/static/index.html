@@ -432,6 +432,32 @@ for angle in 0..360:
       </div>
     </div>
 
+    <!-- FRAGMENT PHYSICS -->
+    <div class="section">
+      <div class="section-title">Fragment Physics</div>
+      <div class="row">
+        <div class="field">
+          <label>Meteorite Type / Density</label>
+          <select id="density-select" onchange="onDensitySelect()" style="padding:0.45rem 0.65rem;background:#111;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:0.88rem;">
+            <option value="3.2">Chondrite (3.2 g/cm³)</option>
+            <option value="2.7">Eucrite / HED (2.7 g/cm³)</option>
+            <option value="2.5">Carbonaceous (2.5 g/cm³)</option>
+            <option value="7.9">Iron (7.9 g/cm³)</option>
+            <option value="custom">Custom…</option>
+          </select>
+        </div>
+        <div class="field" id="density-custom-wrap" style="display:none">
+          <label>Custom Density (g/cm³)</label>
+          <input type="number" id="density-custom" step="any" placeholder="e.g. 3.5" min="0.1" />
+        </div>
+        <div class="field">
+          <label>Drag Coefficient C<sub>d</sub></label>
+          <input type="number" id="cd-input" step="any" value="0.8" min="0.01" placeholder="0.8" />
+        </div>
+      </div>
+      <p class="hint">C<sub>d</sub> ≈ 0.47 for ideal sphere; 0.6–1.0 for rough/irregular fragments. Terminal velocity uses the full physics formula: V = √(8Dgr / 3ρC<sub>d</sub>).</p>
+    </div>
+
     <button class="calc-btn" id="calcBtn" onclick="calculate()">
       Calculate Strewn Field
     </button>
@@ -440,8 +466,145 @@ for angle in 0..360:
       <div class="results-section" id="results-inner"></div>
     </div>
 
+    <!-- DBZ ESTIMATOR -->
+    <div class="section" style="margin-top:1.5rem">
+      <div class="section-title">Radar dBZ Estimator</div>
+      <p class="hint" style="margin-bottom:0.75rem">Estimate what a fragment cloud would look like on Doppler radar (NEXRAD WSR-88D default).</p>
+      <div class="row">
+        <div class="field">
+          <label>Number of Fragments</label>
+          <input type="number" id="dbz-n" value="4" min="1" step="1" />
+        </div>
+        <div class="field">
+          <label>Diameter (cm)</label>
+          <input type="number" id="dbz-diam-cm" step="any" placeholder="10" oninput="dbzCmToIn()" />
+        </div>
+        <div class="field">
+          <label>Diameter (in)</label>
+          <input type="number" id="dbz-diam-in" step="any" placeholder="3.94" oninput="dbzInToCm()" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Radar Range (km)</label>
+          <input type="number" id="dbz-range-km" step="any" placeholder="80" oninput="dbzKmToMi()" />
+        </div>
+        <div class="field">
+          <label>Radar Range (mi)</label>
+          <input type="number" id="dbz-range-mi" step="any" placeholder="49.7" oninput="dbzMiToKm()" />
+        </div>
+        <div class="field">
+          <label>Radar Wavelength</label>
+          <select id="dbz-wavelength" style="padding:0.45rem 0.65rem;background:#111;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:0.88rem;">
+            <option value="10">NEXRAD S-band (10 cm)</option>
+            <option value="5">C-band (5 cm)</option>
+            <option value="3">X-band (3 cm)</option>
+          </select>
+        </div>
+      </div>
+      <button class="calc-btn" onclick="estimateDbz()" style="margin-top:0.5rem;margin-bottom:0">Estimate dBZ</button>
+      <div id="dbz-result" style="margin-top:0.8rem;font-size:0.85rem;display:none">
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+          <tbody id="dbz-result-rows"></tbody>
+        </table>
+        <p id="dbz-context" style="margin-top:0.6rem;font-size:0.78rem;color:#aaa;font-style:italic"></p>
+      </div>
+    </div>
+
+    <!-- INVERSE DBZ -->
+    <div class="section">
+      <div class="section-title">Inverse dBZ — Infer Fragment Properties</div>
+      <p class="hint" style="margin-bottom:0.75rem">Given a dBZ reading from NEXRAD, back out what the fragment cloud looks like.</p>
+      <div class="row">
+        <div class="field">
+          <label>Observed dBZ</label>
+          <input type="number" id="inv-dbz" step="any" placeholder="15" />
+        </div>
+        <div class="field">
+          <label>Radar Range (km)</label>
+          <input type="number" id="inv-range-km" step="any" placeholder="80" oninput="invKmToMi()" />
+        </div>
+        <div class="field">
+          <label>Radar Range (mi)</label>
+          <input type="number" id="inv-range-mi" step="any" placeholder="49.7" oninput="invMiToKm()" />
+        </div>
+        <div class="field">
+          <label>Radar Wavelength</label>
+          <select id="inv-wavelength" style="padding:0.45rem 0.65rem;background:#111;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:0.88rem;">
+            <option value="10">NEXRAD S-band (10 cm)</option>
+            <option value="5">C-band (5 cm)</option>
+            <option value="3">X-band (3 cm)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row" style="align-items:flex-end">
+        <div class="field">
+          <label>Known: Number of fragments (infers diameter)</label>
+          <input type="number" id="inv-n" step="1" min="1" placeholder="e.g. 4" />
+        </div>
+        <div class="field">
+          <label>Known: Diameter cm (infers count)</label>
+          <input type="number" id="inv-diam" step="any" placeholder="e.g. 10" />
+        </div>
+      </div>
+      <p class="hint">Fill in either or both optional fields — leave blank to get only total RCS.</p>
+      <button class="calc-btn" onclick="inverseDbz()" style="margin-top:0.5rem;margin-bottom:0">Calculate</button>
+      <div id="inv-result" style="margin-top:0.8rem;font-size:0.85rem;display:none">
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+          <tbody id="inv-result-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
     <script>
       let windMode = "single";
+
+      // ---- DENSITY / CD ----
+      function onDensitySelect() {
+        const sel = document.getElementById("density-select");
+        document.getElementById("density-custom-wrap").style.display =
+          sel.value === "custom" ? "" : "none";
+      }
+
+      function getDensity() {
+        const sel = document.getElementById("density-select");
+        if (sel.value === "custom") {
+          return parseFloat(document.getElementById("density-custom").value) || 3.2;
+        }
+        return parseFloat(sel.value);
+      }
+
+      function getCd() {
+        return parseFloat(document.getElementById("cd-input").value) || 0.8;
+      }
+
+      // ---- DBZ UNIT CONVERTERS ----
+      function dbzCmToIn() {
+        const v = parseFloat(document.getElementById("dbz-diam-cm").value);
+        document.getElementById("dbz-diam-in").value = isNaN(v) ? "" : (v / 2.54).toFixed(2);
+      }
+      function dbzInToCm() {
+        const v = parseFloat(document.getElementById("dbz-diam-in").value);
+        document.getElementById("dbz-diam-cm").value = isNaN(v) ? "" : (v * 2.54).toFixed(2);
+      }
+      function dbzKmToMi() {
+        const v = parseFloat(document.getElementById("dbz-range-km").value);
+        document.getElementById("dbz-range-mi").value = isNaN(v) ? "" : (v / 1.60934).toFixed(1);
+      }
+      function dbzMiToKm() {
+        const v = parseFloat(document.getElementById("dbz-range-mi").value);
+        document.getElementById("dbz-range-km").value = isNaN(v) ? "" : (v * 1.60934).toFixed(1);
+      }
+      function invKmToMi() {
+        const v = parseFloat(document.getElementById("inv-range-km").value);
+        document.getElementById("inv-range-mi").value = isNaN(v) ? "" : (v / 1.60934).toFixed(1);
+      }
+      function invMiToKm() {
+        const v = parseFloat(document.getElementById("inv-range-mi").value);
+        document.getElementById("inv-range-km").value = isNaN(v) ? "" : (v * 1.60934).toFixed(1);
+      }
 
       // ---- RADAR HITS ----
       let radarCount = 0;
@@ -614,6 +777,8 @@ for angle in 0..360:
               parseFloat(document.getElementById("wind-dir").value) || 0,
           },
           wind_layers: collectWindLayers(),
+          density_g_cm3: getDensity(),
+          Cd: getCd(),
         };
 
         try {
@@ -689,6 +854,81 @@ for angle in 0..360:
 
         btn.disabled = false;
         btn.textContent = "Calculate Strewn Field";
+      }
+
+      // ---- DBZ ESTIMATOR ----
+      async function estimateDbz() {
+        const n           = parseInt(document.getElementById("dbz-n").value) || 1;
+        const diam_cm     = parseFloat(document.getElementById("dbz-diam-cm").value);
+        const range_km    = parseFloat(document.getElementById("dbz-range-km").value);
+        const wavelength  = parseFloat(document.getElementById("dbz-wavelength").value);
+
+        if (isNaN(diam_cm) || isNaN(range_km)) {
+          alert("Please enter diameter (cm) and radar range (km).");
+          return;
+        }
+
+        const resp = await fetch("/dbz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ n_fragments: n, diameter_cm: diam_cm, range_km, wavelength_cm: wavelength }),
+        });
+        const d = await resp.json();
+        const el = document.getElementById("dbz-result");
+        el.style.display = "block";
+
+        if (d.error) {
+          document.getElementById("dbz-result-rows").innerHTML = `<tr><td colspan="2" class="error">⚠ ${d.error}</td></tr>`;
+          document.getElementById("dbz-context").textContent = "";
+          return;
+        }
+        document.getElementById("dbz-result-rows").innerHTML = `
+          <tr><td>RCS per fragment</td><td>${d.sigma_per_m2.toExponential(3)} m² (${d.dbsm_per} dBsm)</td></tr>
+          <tr><td>Total RCS (${n} fragments)</td><td>${d.sigma_total_m2.toExponential(3)} m² (${d.dbsm_total} dBsm)</td></tr>
+          <tr><td style="color:#f0a500;font-weight:700">Equivalent dBZ</td><td style="color:#f0a500;font-weight:700">${d.dbz} dBZ</td></tr>
+          <tr><td>Radar resolution volume</td><td>${(d.resolution_volume_m3/1e6).toFixed(1)} × 10⁶ m³</td></tr>
+        `;
+        document.getElementById("dbz-context").textContent = d.context;
+      }
+
+      // ---- INVERSE DBZ ----
+      async function inverseDbz() {
+        const dbz         = parseFloat(document.getElementById("inv-dbz").value);
+        const range_km    = parseFloat(document.getElementById("inv-range-km").value);
+        const wavelength  = parseFloat(document.getElementById("inv-wavelength").value);
+        const n_raw       = document.getElementById("inv-n").value;
+        const diam_raw    = document.getElementById("inv-diam").value;
+
+        if (isNaN(dbz) || isNaN(range_km)) {
+          alert("Please enter dBZ and radar range (km).");
+          return;
+        }
+
+        const payload = { dbz, range_km, wavelength_cm: wavelength };
+        if (n_raw)    payload.n_fragments  = parseInt(n_raw);
+        if (diam_raw) payload.diameter_cm  = parseFloat(diam_raw);
+
+        const resp = await fetch("/inverse_dbz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const d = await resp.json();
+        const el = document.getElementById("inv-result");
+        el.style.display = "block";
+
+        if (d.error) {
+          document.getElementById("inv-result-rows").innerHTML = `<tr><td colspan="2" class="error">⚠ ${d.error}</td></tr>`;
+          return;
+        }
+        let rows = `
+          <tr><td>Total implied RCS</td><td>${d.sigma_total_m2.toExponential(3)} m² (${d.dbsm_total} dBsm)</td></tr>
+        `;
+        if (d.implied_diameter_cm !== undefined)
+          rows += `<tr><td>Implied diameter (${n_raw} fragments)</td><td style="color:#f0a500;font-weight:700">${d.implied_diameter_cm} cm / ${d.implied_diameter_in} in</td></tr>`;
+        if (d.implied_fragment_count !== undefined)
+          rows += `<tr><td>Implied fragment count (${diam_raw} cm diam)</td><td style="color:#f0a500;font-weight:700">${d.implied_fragment_count}</td></tr>`;
+        document.getElementById("inv-result-rows").innerHTML = rows;
       }
 
       function loadSampleData() {
