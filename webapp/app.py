@@ -120,9 +120,12 @@ def fit_trajectory_from_observations(obs_list):
     return point, direction / np.linalg.norm(direction)
 
 def wind_vector_enu(speed_ms, direction_deg):
+    # Meteorological direction is where the wind blows FROM; drift goes the
+    # opposite way. Returns the per-second displacement (metres), so the
+    # magnitude must scale with the wind speed.
     toward_deg = (direction_deg + 180) % 360
     az = np.radians(toward_deg)
-    return np.array([np.sin(az), np.cos(az), 0.0])
+    return speed_ms * np.array([np.sin(az), np.cos(az), 0.0])
 
 def get_wind_at_altitude(alt_m, wind_mode, wind_single, wind_layers):
     if wind_mode == "single":
@@ -186,19 +189,29 @@ def find_mass_for_fall_time(t_obs, start_alt_m, end_alt_m, density_g_cm3, Cd,
         "diameter_in":  round(d_cm / 2.54, 2),
     }
 
-def fragment_landing(traj_point, traj_dir, mass_g, wind_mode, wind_single, wind_layers,
-                     density_g_cm3=3.3, Cd=0.8):
+def descend_to_altitude(traj_point, traj_dir, mass_g, target_alt_m,
+                        wind_mode, wind_single, wind_layers,
+                        density_g_cm3=3.3, Cd=0.8):
+    """Integrate the wind-corrected descent in 1-second steps until the rock
+    reaches target_alt_m. Returns (ecef_position, elapsed_seconds)."""
     pos = traj_point.copy()
-    for _ in range(300_000):
+    for sec in range(300_000):
         lat, lon, alt = ecef_to_lla(pos)
-        if alt <= 0:
-            return pos
+        if alt <= target_alt_m:
+            return pos, sec
         term_v = terminal_velocity(mass_g, density_g_cm3, Cd, alt)
         pos = pos + traj_dir * term_v
         lat, lon, _ = ecef_to_lla(pos)
         R = enu_to_ecef_rotation(lat, lon)
         spd, dirn = get_wind_at_altitude(alt, wind_mode, wind_single, wind_layers)
         pos = pos + R @ (wind_vector_enu(spd, dirn))
+    return pos, 300_000
+
+def fragment_landing(traj_point, traj_dir, mass_g, wind_mode, wind_single, wind_layers,
+                     density_g_cm3=3.3, Cd=0.8):
+    pos, _ = descend_to_altitude(traj_point, traj_dir, mass_g, 0.0,
+                                 wind_mode, wind_single, wind_layers,
+                                 density_g_cm3, Cd)
     return pos
 
 def make_ellipse(center_lat, center_lon, semi_minor_m, semi_major_m, traj_dir, n_pts=36):
@@ -322,6 +335,7 @@ def analyze_hit():
         radar_lon       = float(data["radar_lon"])
         radar_alt_m     = float(data["radar_alt_m"])
         radar_dbz       = data.get("radar_dbz")
+        radar_range_mi  = data.get("radar_range_mi")
         wind_mode       = data.get("wind_mode", "single")
         wind_single     = data.get("wind_single", {"speed_ms": 0, "direction_deg": 0})
         wind_layers     = data.get("wind_layers", [])
@@ -408,6 +422,9 @@ def analyze_hit():
         dbz_checks = []
         if radar_dbz is not None:
             radar_dbz = float(radar_dbz)
+            # Range from the radar to the hit drives the resolution volume.
+            # Fall back to a typical NEXRAD range only if none was provided.
+            range_km = float(radar_range_mi) * 1.60934 if radar_range_mi else 80.0
             for r in type_results:
                 if r.get("mass_g") is None:
                     continue
@@ -418,9 +435,7 @@ def analyze_hit():
                 sigma     = math.pi * r_m**2
                 lambda_mm = 100.0  # S-band 10 cm
                 K2        = 0.93
-                V_r       = _nexrad_resolution_volume(
-                    math.sqrt(radar_lat**2 + radar_lon**2) if False else 80.0
-                )
+                V_r       = _nexrad_resolution_volume(range_km)
                 Ze  = (lambda_mm**4 / (math.pi**5 * K2)) * (sigma * 1e6 / V_r)
                 est_dbz = 10 * math.log10(Ze) if Ze > 0 else -99
                 delta_dbz = abs(est_dbz - radar_dbz)
@@ -564,6 +579,117 @@ def inverse_dbz():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def _fmt_utc(seconds):
+    """Seconds-since-midnight -> HH:MM:SS (wraps past midnight)."""
+    s = int(round(seconds)) % 86400
+    return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+
+# Altitude levels (m) at which we report a predicted radar position, top-down.
+RADAR_PREDICT_LEVELS_M = [20000, 15000, 12000, 10000, 8000, 6000, 4000, 2000, 1000, 0]
+
+@app.route("/predict_radar", methods=["POST"])
+def predict_radar():
+    """Scenario 2: given a dark-flight point (a radar return high up) and the
+    fireball end time, predict where/when the rock should appear on lower radar
+    sweeps as it descends — i.e. where to look on radar, down to the ground."""
+    data = request.get_json()
+    try:
+        fireball_end_s = float(data["fireball_end_s"])  # seconds since midnight UTC
+        df_time_s      = float(data["df_time_s"])         # dark-flight return time UTC
+        df_lat         = float(data["df_lat"])
+        df_lon         = float(data["df_lon"])
+        df_alt_m       = float(data["df_alt_m"])
+        dbz            = data.get("dbz")
+        range_mi       = data.get("range_mi")
+        wind_mode      = data.get("wind_mode", "single")
+        wind_single    = data.get("wind_single", {"speed_ms": 0, "direction_deg": 0})
+        wind_layers    = data.get("wind_layers", [])
+        density_g_cm3  = float(data.get("density_g_cm3", 3.3))
+        Cd             = float(data.get("Cd", 0.8))
+        assumed_mass_g = float(data.get("assumed_mass_g", 100.0))  # spec: assume 100 g chondrite
+
+        errors, warnings = [], []
+
+        if df_alt_m < DARK_FLIGHT_ALT_MIN_M or df_alt_m > DARK_FLIGHT_ALT_MAX_M:
+            errors.append(
+                f"Dark-flight altitude {df_alt_m/1000:.1f} km is outside the valid range "
+                f"{DARK_FLIGHT_ALT_MIN_M/1000:.0f}–{DARK_FLIGHT_ALT_MAX_M/1000:.0f} km."
+            )
+
+        delta_t = df_time_s - fireball_end_s
+        if delta_t < -300:
+            delta_t += 86400.0
+        if delta_t < 0:
+            errors.append(
+                "Dark-flight return time is before the fireball end time — check your UTC inputs."
+            )
+        elif delta_t > FALL_TIME_MAX_S:
+            warnings.append(
+                f"Dark-flight return is {delta_t:.0f} s after the fireball "
+                f"(> {FALL_TIME_MAX_S:.0f} s) — it may not be related to this fireball."
+            )
+
+        if errors:
+            return jsonify({"errors": errors, "warnings": warnings}), 200
+
+        # Vertical descent straight down from the dark-flight point.
+        traj_point = lla_to_ecef(df_lat, df_lon, df_alt_m)
+        traj_dir   = -traj_point / np.linalg.norm(traj_point)
+
+        levels = [a for a in RADAR_PREDICT_LEVELS_M if a < df_alt_m] + [0]
+        levels = sorted(set(levels), reverse=True)
+
+        predictions = []
+        for alt in levels:
+            ecef, t_fall = descend_to_altitude(
+                traj_point, traj_dir, assumed_mass_g, alt,
+                wind_mode, wind_single, wind_layers, density_g_cm3, Cd
+            )
+            lat, lon, _ = ecef_to_lla(ecef)
+            predictions.append({
+                "alt_m":      alt,
+                "alt_ft":     round(alt / 0.3048),
+                "t_fall_s":   round(t_fall, 1),
+                "clock_utc":  _fmt_utc(df_time_s + t_fall),
+                "lat":        round(lat, 5),
+                "lon":        round(lon, 5),
+            })
+
+        # Optional: size implied by the observed dBZ (treating the return as a
+        # single fragment) — informational only.
+        dbz_note = None
+        if dbz is not None and range_mi:
+            range_km  = float(range_mi) * 1.60934
+            lambda_mm = 100.0
+            K2        = 0.93
+            V_r       = _nexrad_resolution_volume(range_km)
+            Ze        = 10 ** (float(dbz) / 10.0)
+            sigma_m2  = Ze * V_r * math.pi**5 * K2 / lambda_mm**4 / 1e6
+            if sigma_m2 > 0:
+                r_m  = math.sqrt(sigma_m2 / math.pi)
+                d_cm = r_m * 2 * 100
+                dbz_note = (
+                    f"Observed {float(dbz):.0f} dBZ at {range_km:.0f} km implies a single "
+                    f"fragment ≈ {d_cm:.1f} cm across (geometric cross-section)."
+                )
+
+        return jsonify({
+            "delta_t_s":      round(delta_t, 1),
+            "assumed_mass_g": assumed_mass_g,
+            "density_g_cm3":  density_g_cm3,
+            "predictions":    predictions,
+            "ground":         predictions[-1] if predictions else None,
+            "dbz_note":       dbz_note,
+            "errors":         errors,
+            "warnings":       warnings,
+        })
+
+    except KeyError as e:
+        return jsonify({"errors": [f"Missing required field: {e}"]}), 400
+    except Exception as e:
+        return jsonify({"errors": [str(e)]}), 500
 
 
 ELLIPSE_COLORS = [

@@ -321,7 +321,7 @@
             </button>
             <button class="scenario-card" id="card-2" onclick="setScenario(2)">
               <div class="scenario-num">2</div>
-              I have a dark flight trajectory point — I want to calculate the strewn field.
+              I have a dark flight point — I want to know where the radar hits are (and on the ground).
             </button>
           </div>
         </div>
@@ -385,7 +385,7 @@
                   <input type="number" step="any" id="hit-range-mi" placeholder="e.g. 45" />
                 </div>
               </div>
-              <p class="hint">Altitude + dBZ from the WCT marker editor label. Range is informational only.</p>
+              <p class="hint">Altitude + dBZ from the WCT marker editor label. Range (radar→hit) sets the resolution volume for the dBZ check.</p>
             </div>
 
             <!-- A results -->
@@ -524,44 +524,82 @@
         <div id="scenario-2" style="display:none">
 
           <div class="section">
-            <div class="section-title">
-              Radar Hits
-              <button class="add-btn" onclick="addRadarHit()">+ Add Hit</button>
-            </div>
-            <p class="hint" style="margin-bottom:0.65rem">Lat/lon/altitude from the middle of each radar return. One hit assumes vertical descent; two or more fits a trajectory line.</p>
-            <div id="radar-hits"></div>
-          </div>
+            <div class="section-title">Dark Flight Point</div>
+            <p class="hint" style="margin-bottom:0.8rem">Enter the high-altitude radar return (the dark-flight point) plus the fireball end time. The app projects the descent downward to predict where — and at what time — the rock should appear on lower radar sweeps, down to the ground.</p>
 
-          <div class="section">
-            <div class="section-title">
-              Ground Observations
-              <span style="color:#555;font-size:0.72rem;font-weight:400">(optional)</span>
-              <button class="add-btn" onclick="addGroundObs()">+ Add Observation</button>
-            </div>
-            <div id="ground-obs"></div>
-          </div>
-
-          <div class="section">
-            <div class="section-title">Wind Data</div>
-            <div class="wind-toggle">
-              <button class="toggle-btn active" id="btn-single" onclick="setWindMode('single')">Single Average</button>
-              <button class="toggle-btn" id="btn-layers" onclick="setWindMode('layers')">By Altitude Layer</button>
-            </div>
-            <div id="wind-single-form">
+            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem;margin-bottom:0.8rem">
+              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Fireball Info</div>
               <div class="row">
-                <div class="field"><label>Speed (m/s)</label><input type="number" id="wind-spd" step="any" placeholder="10" /></div>
-                <div class="field"><label>Direction — coming FROM (°)</label><input type="number" id="wind-dir" step="any" placeholder="270" /></div>
+                <div class="field">
+                  <label>Fireball End Time UTC (HH:MM:SS)</label>
+                  <input type="time" step="1" id="s2-fireball-time" />
+                  <span class="hint">From camera / cam time</span>
+                </div>
               </div>
-              <p class="hint">Meteorological convention: direction the wind is blowing FROM.</p>
             </div>
-            <div id="wind-layers-form" style="display:none">
-              <p class="hint" style="margin-bottom:0.65rem">Each layer applies from its altitude down to the next layer.</p>
-              <div id="wind-layers"></div>
-              <button class="add-btn" style="margin-top:0.4rem" onclick="addWindLayer()">+ Add Layer</button>
+
+            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem;margin-bottom:0.8rem">
+              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Dark Flight Point (from NOAA WCT)</div>
+              <div class="row">
+                <div class="field">
+                  <label>Time UTC (HH:MM:SS)</label>
+                  <input type="time" step="1" id="s2-time" />
+                </div>
+                <div class="field">
+                  <label>Latitude (°)</label>
+                  <input type="number" step="any" id="s2-lat" placeholder="33.5973" />
+                </div>
+                <div class="field">
+                  <label>Longitude (°)</label>
+                  <input type="number" step="any" id="s2-lon" placeholder="-97.2341" />
+                </div>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label>Altitude (ft)</label>
+                  <input type="number" step="any" id="s2-alt-ft" placeholder="78740" oninput="s2FtToM()" />
+                </div>
+                <div class="field">
+                  <label>Altitude (m)</label>
+                  <input type="number" step="any" id="s2-alt-m" placeholder="24000" readonly style="color:#888;border-style:dashed" />
+                </div>
+                <div class="field">
+                  <label>dBZ (optional)</label>
+                  <input type="number" step="any" id="s2-dbz" placeholder="e.g. 18" />
+                </div>
+                <div class="field">
+                  <label>Range (miles, optional)</label>
+                  <input type="number" step="any" id="s2-range-mi" placeholder="e.g. 45" />
+                </div>
+              </div>
+              <p class="hint">Altitude must be 18–33 km (dark flight). dBZ + range give an estimated fragment size.</p>
             </div>
           </div>
 
-          <button class="calc-btn" id="calcBtn" onclick="calculate()">Calculate Strewn Field</button>
+          <div class="section">
+            <div class="section-title">
+              Wind Data
+              <span style="color:#555;font-size:0.72rem;font-weight:400">(optional — without it the descent is treated as vertical)</span>
+            </div>
+            <div class="wind-toggle">
+              <button class="toggle-btn active" id="s2-btn-single" onclick="setS2WindMode('single')">Single Average</button>
+              <button class="toggle-btn" id="s2-btn-layers" onclick="setS2WindMode('layers')">By Altitude Layer</button>
+            </div>
+            <div id="s2-wind-single">
+              <div class="row">
+                <div class="field"><label>Speed (m/s)</label><input type="number" id="s2-wind-spd" step="any" placeholder="10" /></div>
+                <div class="field"><label>Direction — coming FROM (°)</label><input type="number" id="s2-wind-dir" step="any" placeholder="270" /></div>
+              </div>
+              <p class="hint">Meteorological convention: direction the wind is blowing FROM. Sounding data: weather.uwyo.edu/upperair/sounding.html</p>
+            </div>
+            <div id="s2-wind-layers" style="display:none">
+              <p class="hint" style="margin-bottom:0.65rem">Each layer applies from its altitude down to the next layer (radiosonde sounding).</p>
+              <div id="s2-wind-layer-list"></div>
+              <button class="add-btn" style="margin-top:0.4rem" onclick="addS2WindLayer()">+ Add Layer</button>
+            </div>
+          </div>
+
+          <button class="calc-btn" id="calcBtn" onclick="predictRadar()">Predict Radar Hit Location</button>
 
           <div id="results" style="display:none">
             <div class="section" id="results-inner"></div>
@@ -580,10 +618,8 @@ x = r·cos(lat)·cos(lon)
 y = r·cos(lat)·sin(lon)
 z = r·sin(lat)</pre>
 
-            <h3>2. Trajectory Determination (Scenario 2)</h3>
-            <p><strong style="color:#e0e0e0">2+ radar hits:</strong> SVD least-squares fit through ECEF points.</p>
-            <p><strong style="color:#e0e0e0">1 hit alone:</strong> Vertical descent — direction = −position/|position|.</p>
-            <p><strong style="color:#e0e0e0">Ground observations:</strong> Each observer defines a vertical plane; trajectory = cross product of two plane normals.</p>
+            <h3>2. Radar Hit Prediction (Scenario 2)</h3>
+            <p>Starting from the dark-flight point, the rock is descended vertically (direction = −position/|position|) through the standard atmosphere for an assumed 100 g chondrite. At each altitude level the predicted lat/lon and clock time (dark-flight time + integrated fall time) are reported, with optional per-layer wind correction — telling you where and when to look on lower radar sweeps, down to the ground.</p>
 
             <h3>3. Standard Atmosphere</h3>
             <p>Air density ρ(h) and gravity g(h) are interpolated from the ISA table (0–33 km, 1 km steps):</p>
@@ -695,9 +731,6 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
         document.getElementById("scenario-2").style.display = n === 2 ? "" : "none";
         document.getElementById("card-1").className = "scenario-card" + (n === 1 ? " active" : "");
         document.getElementById("card-2").className = "scenario-card" + (n === 2 ? " active" : "");
-        if (n === 2 && document.querySelectorAll("#radar-hits .entry").length === 0) {
-          addRadarHit();
-        }
       }
 
       // ── Section C wind mode ───────────────────────────────────────
@@ -794,6 +827,8 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
           Cd: getCd(),
         };
         if (dbz_raw) payload.radar_dbz = parseFloat(dbz_raw);
+        const range_raw = document.getElementById("hit-range-mi").value;
+        if (range_raw) payload.radar_range_mi = parseFloat(range_raw);
 
         try {
           const resp = await fetch("/analyze_hit", {
@@ -1102,6 +1137,133 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
           inner.innerHTML = '<p class="error">Could not reach the server.</p>';
         }
         btn.disabled = false; btn.textContent = "Calculate Strewn Field";
+      }
+
+      // ── Scenario 2: predict radar hit location ────────────────────
+      function s2FtToM() {
+        const ft = parseFloat(document.getElementById("s2-alt-ft").value);
+        document.getElementById("s2-alt-m").value = isNaN(ft) ? "" : (ft * 0.3048).toFixed(1);
+      }
+      let s2WindMode = "single";
+      let s2LayerCount = 0;
+      function setS2WindMode(mode) {
+        s2WindMode = mode;
+        document.getElementById("s2-wind-single").style.display = mode === "single" ? "" : "none";
+        document.getElementById("s2-wind-layers").style.display = mode === "layers" ? "" : "none";
+        document.getElementById("s2-btn-single").className = "toggle-btn" + (mode === "single" ? " active" : "");
+        document.getElementById("s2-btn-layers").className = "toggle-btn" + (mode === "layers" ? " active" : "");
+      }
+      function addS2WindLayer() {
+        s2LayerCount++;
+        const id = s2LayerCount;
+        const div = document.createElement("div");
+        div.className = "entry"; div.id = `s2l-${id}`;
+        div.innerHTML = `
+          <div class="entry-header">Layer #${id}
+            <button class="remove-btn" onclick="removeEntry('s2l-${id}')">Remove</button>
+          </div>
+          <div class="row">
+            <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="s2l${id}-alt" placeholder="20000"/></div>
+            <div class="field"><label>Speed (m/s)</label><input type="number" step="any" id="s2l${id}-spd" placeholder="15"/></div>
+            <div class="field"><label>Direction FROM (°)</label><input type="number" step="any" id="s2l${id}-dir" placeholder="270"/></div>
+          </div>`;
+        document.getElementById("s2-wind-layer-list").appendChild(div);
+      }
+      function collectS2WindLayers() {
+        const layers = [];
+        document.querySelectorAll("[id^='s2l-']").forEach(el => {
+          const n = el.id.split("-")[1];
+          const alt = parseFloat(document.getElementById(`s2l${n}-alt`)?.value);
+          const spd = parseFloat(document.getElementById(`s2l${n}-spd`)?.value);
+          const dir = parseFloat(document.getElementById(`s2l${n}-dir`)?.value);
+          if (!isNaN(alt) && !isNaN(spd) && !isNaN(dir))
+            layers.push({ alt_m: alt, speed_ms: spd, direction_deg: dir });
+        });
+        return layers;
+      }
+
+      async function predictRadar() {
+        const btn   = document.getElementById("calcBtn");
+        const inner = document.getElementById("results-inner");
+        const fireball_s = timeToSeconds(document.getElementById("s2-fireball-time").value);
+        const df_s       = timeToSeconds(document.getElementById("s2-time").value);
+        const lat        = parseFloat(document.getElementById("s2-lat").value);
+        const lon        = parseFloat(document.getElementById("s2-lon").value);
+        const alt_m      = parseFloat(document.getElementById("s2-alt-m").value);
+
+        document.getElementById("results").style.display = "block";
+        if (fireball_s === null || df_s === null) {
+          inner.innerHTML = '<p class="error">⚠ Enter both the fireball end time and the dark-flight point time.</p>';
+          return;
+        }
+        if (isNaN(lat) || isNaN(lon) || isNaN(alt_m)) {
+          inner.innerHTML = '<p class="error">⚠ Enter latitude, longitude, and altitude for the dark-flight point.</p>';
+          return;
+        }
+
+        const payload = {
+          fireball_end_s: fireball_s,
+          df_time_s:      df_s,
+          df_lat: lat, df_lon: lon, df_alt_m: alt_m,
+          wind_mode:   s2WindMode,
+          wind_single: {
+            speed_ms:      parseFloat(document.getElementById("s2-wind-spd").value) || 0,
+            direction_deg: parseFloat(document.getElementById("s2-wind-dir").value) || 0,
+          },
+          wind_layers:   collectS2WindLayers(),
+          density_g_cm3: getStrewnDensity(),
+          Cd:            getCd(),
+        };
+        const dbz_raw = document.getElementById("s2-dbz").value;
+        if (dbz_raw) payload.dbz = parseFloat(dbz_raw);
+        const range_raw = document.getElementById("s2-range-mi").value;
+        if (range_raw) payload.range_mi = parseFloat(range_raw);
+
+        btn.disabled = true; btn.textContent = "Predicting…";
+        try {
+          const resp = await fetch("/predict_radar", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const d = await resp.json();
+
+          if (d.errors && d.errors.length) {
+            inner.innerHTML = d.errors.map(e => `<p class="error">⚠ ${e}</p>`).join("");
+            return;
+          }
+          let warn = (d.warnings && d.warnings.length)
+            ? d.warnings.map(w => `<p class="warn-msg">⚠ ${w}</p>`).join("") : "";
+
+          const rows = d.predictions.map(p => {
+            const isGround = p.alt_m === 0;
+            return `<tr ${isGround ? 'style="background:#1a2a1a;font-weight:700"' : ''}>
+              <td>${isGround ? "Ground" : p.alt_ft.toLocaleString() + " ft"}</td>
+              <td>${(p.alt_m/1000).toFixed(1)} km</td>
+              <td>+${p.t_fall_s}s</td>
+              <td>${p.clock_utc}</td>
+              <td>${p.lat.toFixed(5)}°</td>
+              <td>${p.lon.toFixed(5)}°</td>
+              <td><a href="https://maps.google.com/?q=${p.lat},${p.lon}" target="_blank">Open ↗</a></td>
+            </tr>`;
+          }).join("");
+
+          inner.innerHTML = `
+            <div class="section-title" style="margin-bottom:0.65rem">Predicted Radar Hit Locations</div>
+            <p style="font-size:0.8rem;color:#888;margin-bottom:0.5rem">
+              Assuming a ${d.assumed_mass_g} g object at ${d.density_g_cm3} g/cm³ (vertical descent${payload.wind_layers.length || payload.wind_single.speed_ms ? ", wind-corrected" : ""}).
+              Fireball→dark-flight Δt = ${d.delta_t_s}s.
+            </p>
+            ${warn}
+            ${d.dbz_note ? `<p style="font-size:0.78rem;color:#9cf;margin-bottom:0.5rem">${d.dbz_note}</p>` : ""}
+            <table>
+              <thead><tr><th>Altitude</th><th>(km)</th><th>Fall time</th><th>UTC</th><th>Latitude</th><th>Longitude</th><th>Maps</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+            <p style="font-size:0.72rem;color:#555;margin-top:0.5rem">Times are predicted clock times the rock passes each altitude, based on the standard-atmosphere fall-time model.</p>`;
+        } catch(e) {
+          inner.innerHTML = '<p class="error">Could not reach the server.</p>';
+        }
+        btn.disabled = false; btn.textContent = "Predict Radar Hit Location";
       }
 
       function toggleExplanation() {
