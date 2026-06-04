@@ -121,6 +121,6 @@ conda install numpy flask
 ## Notes
 
 - The fireball end time comes from camera/dashcam footage; an accurate UTC time is the most important input for the fall-time calculation.
-- Air density and gravity are read from the `Spherical` tab of `meteor dark flight.xlsx` (ISA, 0–30 km, with 31–33 km extrapolated). Terminal velocities and fall times are validated against that spreadsheet.
+- Air density is read from the `Spherical` tab of `meteor dark flight.xlsx` (ISA, 0–30 km, with 31–33 km extrapolated). Gravity is computed from the standard value, g(h) = 9.80665·(R/(R+h))² — the spreadsheet's gravity column was incorrect (~9.08 at sea level) and is not used.
 - The Tailscale IP (`tailscale0`) can also reach the web app if the other device is on the same Tailscale network.
 - `nohup.out` is gitignored — it is generated when running the server in the background with `nohup python app.py &`.

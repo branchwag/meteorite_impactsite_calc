@@ -649,13 +649,13 @@ z = r·sin(lat)</pre>
             <p>Both scenarios use the same inputs (fireball end time, dark-flight start altitude, and a radar return point) and run the same A/B/C analysis below. Scenario 2 additionally predicts where to look on radar: starting from the radar point, the rock is descended vertically (direction = −position/|position|) through the standard atmosphere for an assumed 100 g chondrite, reporting the predicted lat/lon and clock time at each lower altitude (with optional per-layer wind correction), down to the ground.</p>
 
             <h3>3. Standard Atmosphere</h3>
-            <p>Air density ρ(h) and gravity g(h) are interpolated from the ISA table (0–33 km, 1 km steps):</p>
+            <p>Air density ρ(h) is interpolated from the ISA table (0–33 km, 1 km steps). Gravity is computed from the standard value: g(h) = 9.80665·(R/(R+h))².</p>
             <pre>Alt (km)  ρ (kg/m³)   g (m/s²)
-   0       1.2250      9.0807
-  10       0.4127      9.0665
-  20       0.0880      9.0523
-  24       0.0463      9.0466
-  30       0.0180      9.0382</pre>
+   0       1.2250      9.8067
+  10       0.4127      9.7759
+  20       0.0880      9.7454
+  24       0.0463      9.7332
+  30       0.0180      9.7150</pre>
 
             <h3>4. Terminal Velocity</h3>
             <p>Full physics formula (force balance at terminal velocity), ρ and g re-evaluated at each altitude step:</p>
