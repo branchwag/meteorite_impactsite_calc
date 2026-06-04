@@ -321,7 +321,7 @@
             </button>
             <button class="scenario-card" id="card-2" onclick="setScenario(2)">
               <div class="scenario-num">2</div>
-              I have a dark flight point — I want the type, size, ground location, and where the radar hits are.
+              I have a dark flight point — I want to know where the radar hits are.
             </button>
           </div>
         </div>
@@ -402,10 +402,10 @@
               <span class="abc-badge">B</span>
               Number of Rocks in the Air
             </div>
-            <p class="hint" style="margin-bottom:0.75rem">Estimate the fragment count from a dBZ reading, or estimate what dBZ a known fragment cloud would produce.</p>
+            <p class="hint" style="margin-bottom:0.75rem">Enter the radar hit's observed dBZ and range. With the fragment size from Section A, the app returns how many rocks are in the radar hit. (dBZ comes from the radar hit — it is not estimated.)</p>
 
-            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem;margin-bottom:0.8rem">
-              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Estimate dBZ → Fragment Count (Inverse)</div>
+            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem">
+              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Observed dBZ + Range → Number of Rocks</div>
               <div class="row">
                 <div class="field">
                   <label>Observed dBZ (from NOAA WCT)</label>
@@ -434,50 +434,10 @@
                   </select>
                 </div>
               </div>
-              <button class="calc-btn" onclick="estimateCount()" style="margin-top:0.3rem;margin-bottom:0">Estimate Fragment Count</button>
+              <button class="calc-btn" onclick="estimateCount()" style="margin-top:0.3rem;margin-bottom:0">Calculate Number of Rocks</button>
               <div id="b-inv-result" style="display:none;margin-top:0.6rem">
                 <table><thead><tr><th>Metric</th><th>Value</th></tr></thead>
                 <tbody id="b-inv-rows"></tbody></table>
-              </div>
-            </div>
-
-            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem">
-              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Fragment Count → Estimate dBZ (Forward)</div>
-              <div class="row">
-                <div class="field">
-                  <label>Number of Fragments</label>
-                  <input type="number" id="b-fwd-n" value="4" min="1" step="1" />
-                </div>
-                <div class="field">
-                  <label>Diameter (cm)</label>
-                  <input type="number" step="any" id="b-fwd-diam-cm" placeholder="10" oninput="bFwdCmToIn()" />
-                </div>
-                <div class="field">
-                  <label>Diameter (in)</label>
-                  <input type="number" step="any" id="b-fwd-diam-in" placeholder="3.94" oninput="bFwdInToCm()" />
-                </div>
-                <div class="field">
-                  <label>Radar Range (km)</label>
-                  <input type="number" step="any" id="b-fwd-range-km" placeholder="80" oninput="bFwdKmToMi()" />
-                </div>
-                <div class="field">
-                  <label>Range (mi)</label>
-                  <input type="number" step="any" id="b-fwd-range-mi" placeholder="49.7" oninput="bFwdMiToKm()" />
-                </div>
-                <div class="field">
-                  <label>Wavelength</label>
-                  <select id="b-fwd-wavelength" style="padding:0.42rem 0.6rem;background:#111;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:0.86rem">
-                    <option value="10">S-band (10 cm)</option>
-                    <option value="5">C-band (5 cm)</option>
-                    <option value="3">X-band (3 cm)</option>
-                  </select>
-                </div>
-              </div>
-              <button class="calc-btn" onclick="estimateDbzFwd()" style="margin-top:0.3rem;margin-bottom:0">Estimate dBZ</button>
-              <div id="b-fwd-result" style="display:none;margin-top:0.6rem">
-                <table><thead><tr><th>Metric</th><th>Value</th></tr></thead>
-                <tbody id="b-fwd-rows"></tbody></table>
-                <p id="b-fwd-context" style="margin-top:0.5rem;font-size:0.76rem;color:#aaa;font-style:italic"></p>
               </div>
             </div>
           </div>
@@ -536,7 +496,7 @@
 
           <div class="section">
             <div class="section-title">Dark Flight Point</div>
-            <p class="hint" style="margin-bottom:0.8rem">Enter the fireball end time, the dark-flight (start) altitude, and the radar return point. The app runs the full analysis — (A) meteorite type &amp; size, (B) dBZ consistency, (C) wind-corrected ground location — and additionally predicts where/when the rock appears on lower radar sweeps down to the ground.</p>
+            <p class="hint" style="margin-bottom:0.8rem">Enter the fireball end time and the dark-flight point. The app projects the descent downward to predict where — and at what time — the rock should appear on lower radar sweeps, down to the ground. (Type, size, number of rocks, and ground location are determined from an actual radar hit under Scenario 1.)</p>
 
             <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem;margin-bottom:0.8rem">
               <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Fireball Info</div>
@@ -546,16 +506,11 @@
                   <input type="time" step="1" id="s2-fireball-time" />
                   <span class="hint">From camera / cam time</span>
                 </div>
-                <div class="field">
-                  <label>Dark Flight Altitude (km)</label>
-                  <input type="number" id="s2-dark-alt-km" value="24" step="any" min="18" max="33" />
-                  <span class="hint">Start altitude · valid range 18–33 km</span>
-                </div>
               </div>
             </div>
 
             <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem;margin-bottom:0.8rem">
-              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Radar Return / Dark Flight Point (from NOAA WCT)</div>
+              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Dark Flight Point</div>
               <div class="row">
                 <div class="field">
                   <label>Time UTC (HH:MM:SS)</label>
@@ -573,22 +528,14 @@
               <div class="row">
                 <div class="field">
                   <label>Altitude (ft)</label>
-                  <input type="number" step="any" id="s2-alt-ft" placeholder="65617" oninput="s2FtToM()" />
+                  <input type="number" step="any" id="s2-alt-ft" placeholder="78740" oninput="s2FtToM()" />
                 </div>
                 <div class="field">
                   <label>Altitude (m)</label>
-                  <input type="number" step="any" id="s2-alt-m" placeholder="20000" readonly style="color:#888;border-style:dashed" />
-                </div>
-                <div class="field">
-                  <label>dBZ (optional)</label>
-                  <input type="number" step="any" id="s2-dbz" placeholder="e.g. 18" />
-                </div>
-                <div class="field">
-                  <label>Range (miles, optional)</label>
-                  <input type="number" step="any" id="s2-range-mi" placeholder="e.g. 45" />
+                  <input type="number" step="any" id="s2-alt-m" placeholder="24000" readonly style="color:#888;border-style:dashed" />
                 </div>
               </div>
-              <p class="hint">This point must be below the dark-flight altitude. dBZ + range give an estimated fragment size and feed the radar prediction.</p>
+              <p class="hint">The dark-flight point altitude must be 18–33 km.</p>
             </div>
           </div>
 
@@ -626,7 +573,7 @@
             </div>
           </div>
 
-          <button class="calc-btn" id="calcBtn" onclick="analyzeScenario2()">Analyze — Type, Location &amp; Radar Prediction</button>
+          <button class="calc-btn" id="calcBtn" onclick="predictRadar()">Predict Radar Hit Location</button>
 
           <div id="results" style="display:none">
             <div class="section" id="results-inner"></div>
@@ -645,8 +592,9 @@ x = r·cos(lat)·cos(lon)
 y = r·cos(lat)·sin(lon)
 z = r·sin(lat)</pre>
 
-            <h3>2. Scenarios 1 &amp; 2</h3>
-            <p>Both scenarios use the same inputs (fireball end time, dark-flight start altitude, and a radar return point) and run the same A/B/C analysis below. Scenario 2 additionally predicts where to look on radar: starting from the radar point, the rock is descended vertically (direction = −position/|position|) through the standard atmosphere for an assumed 100 g chondrite, reporting the predicted lat/lon and clock time at each lower altitude (with optional per-layer wind correction), down to the ground.</p>
+            <h3>2. The Two Scenarios</h3>
+            <p><strong style="color:#e0e0e0">Scenario 1 (radar hit):</strong> runs the full A/B/C analysis below — type/size, number of rocks from the observed dBZ, and wind-corrected ground location.</p>
+            <p><strong style="color:#e0e0e0">Scenario 2 (dark flight point):</strong> predicts only where to look on radar. Starting from the dark-flight point, the rock is descended vertically (direction = −position/|position|) through the standard atmosphere for an assumed 100 g chondrite, reporting the predicted lat/lon and clock time at each lower altitude (with optional per-layer wind correction), down to the ground. Type, size, number of rocks, and ground location require an actual radar hit (Scenario 1).</p>
 
             <h3>3. Standard Atmosphere</h3>
             <p>Air density ρ(h) is interpolated from the ISA table (0–33 km, 1 km steps). Gravity is computed from the standard value: g(h) = 9.80665·(R/(R+h))².</p>
@@ -901,13 +849,16 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
               <tbody>${aRows}</tbody>
             </table>`;
 
-          // Auto-fill Section B diameter from first matched type
+          // Auto-fill Section B (number of rocks) from Section A + the radar hit inputs
           const firstMatch = d.type_results.find(r => r.mass_g !== null);
           if (firstMatch) {
             document.getElementById("b-inv-diam").value = firstMatch.diameter_cm;
-            document.getElementById("b-fwd-diam-cm").value = firstMatch.diameter_cm;
-            document.getElementById("b-fwd-diam-in").value = firstMatch.diameter_in;
           }
+          // Carry the observed dBZ and range over from the radar-hit inputs
+          const hitDbz = document.getElementById("hit-dbz").value;
+          if (hitDbz) document.getElementById("b-inv-dbz").value = hitDbz;
+          const hitRangeMi = document.getElementById("hit-range-mi").value;
+          if (hitRangeMi) { document.getElementById("b-inv-range-mi").value = hitRangeMi; bInvMiToKm(); }
 
           // ── Section C: Google Maps buttons ──
           let buttons = "";
@@ -938,23 +889,6 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
         const v = parseFloat(document.getElementById("b-inv-range-mi").value);
         document.getElementById("b-inv-range-km").value = isNaN(v) ? "" : (v*1.60934).toFixed(1);
       }
-      function bFwdCmToIn() {
-        const v = parseFloat(document.getElementById("b-fwd-diam-cm").value);
-        document.getElementById("b-fwd-diam-in").value = isNaN(v) ? "" : (v/2.54).toFixed(2);
-      }
-      function bFwdInToCm() {
-        const v = parseFloat(document.getElementById("b-fwd-diam-in").value);
-        document.getElementById("b-fwd-diam-cm").value = isNaN(v) ? "" : (v*2.54).toFixed(2);
-      }
-      function bFwdKmToMi() {
-        const v = parseFloat(document.getElementById("b-fwd-range-km").value);
-        document.getElementById("b-fwd-range-mi").value = isNaN(v) ? "" : (v/1.60934).toFixed(1);
-      }
-      function bFwdMiToKm() {
-        const v = parseFloat(document.getElementById("b-fwd-range-mi").value);
-        document.getElementById("b-fwd-range-km").value = isNaN(v) ? "" : (v*1.60934).toFixed(1);
-      }
-
       async function estimateCount() {
         const dbz  = parseFloat(document.getElementById("b-inv-dbz").value);
         const rkm  = parseFloat(document.getElementById("b-inv-range-km").value);
@@ -970,29 +904,8 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
         if (d.error) { document.getElementById("b-inv-rows").innerHTML = `<tr><td colspan="2" class="error">⚠ ${d.error}</td></tr>`; return; }
         let rows = `<tr><td>Total implied RCS</td><td>${d.sigma_total_m2.toExponential(3)} m² (${d.dbsm_total} dBsm)</td></tr>`;
         if (d.implied_fragment_count !== undefined)
-          rows += `<tr><td style="color:#f0a500;font-weight:700">Implied fragment count</td><td style="color:#f0a500;font-weight:700">${d.implied_fragment_count}</td></tr>`;
+          rows += `<tr><td style="color:#f0a500;font-weight:700">Number of rocks in the radar hit</td><td style="color:#f0a500;font-weight:700">${d.implied_fragment_count}</td></tr>`;
         document.getElementById("b-inv-rows").innerHTML = rows;
-      }
-
-      async function estimateDbzFwd() {
-        const n    = parseInt(document.getElementById("b-fwd-n").value) || 1;
-        const dcm  = parseFloat(document.getElementById("b-fwd-diam-cm").value);
-        const rkm  = parseFloat(document.getElementById("b-fwd-range-km").value);
-        const wl   = parseFloat(document.getElementById("b-fwd-wavelength").value);
-        if (isNaN(dcm) || isNaN(rkm)) { alert("Enter diameter and radar range."); return; }
-        const resp = await fetch("/dbz", { method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ n_fragments: n, diameter_cm: dcm, range_km: rkm, wavelength_cm: wl }) });
-        const d = await resp.json();
-        const el = document.getElementById("b-fwd-result");
-        el.style.display = "block";
-        if (d.error) { document.getElementById("b-fwd-rows").innerHTML = `<tr><td colspan="2" class="error">⚠ ${d.error}</td></tr>`; return; }
-        document.getElementById("b-fwd-rows").innerHTML = `
-          <tr><td>RCS per fragment</td><td>${d.sigma_per_m2.toExponential(3)} m² (${d.dbsm_per} dBsm)</td></tr>
-          <tr><td>Total RCS</td><td>${d.sigma_total_m2.toExponential(3)} m² (${d.dbsm_total} dBsm)</td></tr>
-          <tr><td style="color:#f0a500;font-weight:700">dBZ (geometric)</td><td style="color:#f0a500;font-weight:700">${d.dbz} dBZ</td></tr>
-          <tr><td style="color:#888">dBZ (Rayleigh)</td><td style="color:#888">${d.dbz_rayleigh} dBZ</td></tr>
-          <tr><td>Regime</td><td style="font-size:0.75rem">${d.scattering_regime}</td></tr>`;
-        document.getElementById("b-fwd-context").textContent = d.context;
       }
 
       function removeEntry(id) { document.getElementById(id)?.remove(); }
@@ -1040,23 +953,22 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
         return layers;
       }
 
-      async function analyzeScenario2() {
+      async function predictRadar() {
         const btn   = document.getElementById("calcBtn");
         const inner = document.getElementById("results-inner");
         const fireball_s = timeToSeconds(document.getElementById("s2-fireball-time").value);
         const pt_s       = timeToSeconds(document.getElementById("s2-time").value);
-        const dark_km    = parseFloat(document.getElementById("s2-dark-alt-km").value) || 24;
         const lat        = parseFloat(document.getElementById("s2-lat").value);
         const lon        = parseFloat(document.getElementById("s2-lon").value);
         const alt_m      = parseFloat(document.getElementById("s2-alt-m").value);
 
         document.getElementById("results").style.display = "block";
         if (fireball_s === null || pt_s === null) {
-          inner.innerHTML = '<p class="error">⚠ Enter both the fireball end time and the radar return time.</p>';
+          inner.innerHTML = '<p class="error">⚠ Enter both the fireball end time and the dark-flight point time.</p>';
           return;
         }
         if (isNaN(lat) || isNaN(lon) || isNaN(alt_m)) {
-          inner.innerHTML = '<p class="error">⚠ Enter latitude, longitude, and altitude for the radar return point.</p>';
+          inner.innerHTML = '<p class="error">⚠ Enter latitude, longitude, and altitude for the dark-flight point.</p>';
           return;
         }
 
@@ -1068,112 +980,42 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
           },
           wind_layers: collectS2WindLayers(),
         };
-        const dbz_raw   = document.getElementById("s2-dbz").value;
-        const range_raw = document.getElementById("s2-range-mi").value;
+        const windCorrected = wind.wind_layers.length || wind.wind_single.speed_ms;
 
-        const analyzePayload = {
-          fireball_end_s: fireball_s, radar_hit_s: pt_s,
-          dark_flight_alt_km: dark_km,
-          radar_lat: lat, radar_lon: lon, radar_alt_m: alt_m,
-          Cd: getCd(), ...wind,
-        };
-        if (dbz_raw)   analyzePayload.radar_dbz      = parseFloat(dbz_raw);
-        if (range_raw) analyzePayload.radar_range_mi = parseFloat(range_raw);
-
-        const predictPayload = {
+        const payload = {
           fireball_end_s: fireball_s, df_time_s: pt_s,
           df_lat: lat, df_lon: lon, df_alt_m: alt_m,
           density_g_cm3: getStrewnDensity(), Cd: getCd(), ...wind,
         };
-        if (dbz_raw)   predictPayload.dbz      = parseFloat(dbz_raw);
-        if (range_raw) predictPayload.range_mi = parseFloat(range_raw);
 
-        const windCorrected = wind.wind_layers.length || wind.wind_single.speed_ms;
-
-        btn.disabled = true; btn.textContent = "Analyzing…";
+        btn.disabled = true; btn.textContent = "Predicting…";
         inner.innerHTML = "<p style='color:#888;font-size:0.83rem'>Calculating…</p>";
         try {
-          const [aResp, pResp] = await Promise.all([
-            fetch("/analyze_hit",   { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(analyzePayload) }),
-            fetch("/predict_radar", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(predictPayload) }),
-          ]);
-          const a = await aResp.json();
-          const p = await pResp.json();
-
-          // Hard input errors from the analysis block stop everything.
-          if (a.errors && a.errors.length) {
-            inner.innerHTML = a.errors.map(e => `<p class="error">⚠ ${e}</p>`).join("");
+          const resp = await fetch("/predict_radar", {
+            method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+          const p = await resp.json();
+          if (p.errors && p.errors.length) {
+            inner.innerHTML = p.errors.map(e => `<p class="error">⚠ ${e}</p>`).join("");
             return;
           }
-
-          let html = "";
-
-          // ── A: type & size ──
-          const verdict = a.is_meteorite
-            ? '<span style="color:#6f6;font-weight:700">✓ Meteorite candidate</span>'
-            : '<span style="color:#f66;font-weight:700">✗ Likely not a meteorite</span>';
-          const aRows = a.type_results.map(r => r.mass_g === null
-            ? `<tr><td>${r.type}</td><td colspan="2" style="color:#555;font-style:italic">${r.note}</td></tr>`
-            : `<tr style="background:#1a1a1a"><td style="color:#6f6">${r.type}</td><td>${r.mass_g.toFixed(1)} g</td><td>${r.diameter_cm} cm / ${r.diameter_in} in</td></tr>`
-          ).join("");
-          html += `<div class="abc-header"><span class="abc-badge">A</span> Type of Meteorite</div>
-            <p style="font-size:0.8rem;color:#888;margin:0.3rem 0">Δt = <strong style="color:#e0e0e0">${a.delta_t_s} s</strong></p>
-            <p style="margin-bottom:0.5rem">${verdict}</p>
-            <table><thead><tr><th>Type</th><th>Mass</th><th>Diameter</th></tr></thead><tbody>${aRows}</tbody></table>`;
-          (a.warnings || []).forEach(w => { html += `<p class="warn-msg">⚠ ${w}</p>`; });
-
-          // ── B: dBZ / size ──
-          html += `<div class="abc-header" style="margin-top:1rem"><span class="abc-badge">B</span> dBZ &amp; Fragment Size</div>`;
-          if (a.dbz_checks && a.dbz_checks.length) {
-            const bRows = a.dbz_checks.map(c =>
-              `<tr><td>${c.type}</td><td>${c.est_dbz}</td><td>${c.obs_dbz}</td><td>${c.delta_dbz}</td>
-               <td style="color:#f0a500;font-weight:700">${c.n_rocks != null ? c.n_rocks.toLocaleString() : "—"}</td>
-               <td style="color:${c.note==='consistent'?'#6f6':'#f0a500'}">${c.note}</td></tr>`).join("");
-            html += `<table><thead><tr><th>Type</th><th>Est dBZ (1 rock)</th><th>Obs dBZ</th><th>Δ</th><th># Rocks</th><th></th></tr></thead><tbody>${bRows}</tbody></table>
-              <p style="font-size:0.74rem;color:#888;margin-top:0.3rem"># Rocks = fragments of that size needed to produce the observed dBZ.</p>`;
-          }
-          if (p.dbz_note) {
-            html += `<p style="font-size:0.8rem;color:#9cf;margin-top:0.4rem">${p.dbz_note}</p>`;
-          }
-          if (!(a.dbz_checks && a.dbz_checks.length) && !p.dbz_note) {
-            html += `<p style="color:#555;font-size:0.83rem">Enter dBZ (and range) above to estimate fragment size and check radar consistency.</p>`;
-          }
-
-          // ── C: ground location ──
-          let cBtns = "";
-          a.type_results.forEach(r => {
-            if (r.mass_g !== null && r.landing_lat != null) {
-              cBtns += `<a class="maps-btn" href="https://maps.google.com/?q=${r.landing_lat},${r.landing_lon}" target="_blank">
-                Open in Google Maps — ${r.type}<br>
-                <span style="font-size:0.73rem;opacity:0.8">${r.landing_lat.toFixed(5)}°, ${r.landing_lon.toFixed(5)}°</span></a>`;
-            }
-          });
-          html += `<div class="abc-header" style="margin-top:1rem"><span class="abc-badge">C</span> Ground Location (wind-corrected)</div>
-            ${cBtns || '<p style="color:#555;font-size:0.83rem">No landing locations (no matched types).</p>'}`;
-
-          // ── Radar hit prediction (descent table) ──
-          html += `<div class="section-title" style="margin-top:1.2rem;margin-bottom:0.5rem">Where to Look on Radar</div>`;
-          if (p.errors && p.errors.length) {
-            html += p.errors.map(e => `<p class="warn-msg">⚠ Radar prediction: ${e}</p>`).join("");
-          } else {
-            (p.warnings || []).forEach(w => { html += `<p class="warn-msg">⚠ ${w}</p>`; });
-            const pRows = p.predictions.map(row => {
-              const isGround = row.alt_m === 0;
-              return `<tr ${isGround ? 'style="background:#1a2a1a;font-weight:700"' : ''}>
-                <td>${isGround ? "Ground" : row.alt_ft.toLocaleString() + " ft"}</td>
-                <td>${(row.alt_m/1000).toFixed(1)} km</td><td>+${row.t_fall_s}s</td><td>${row.clock_utc}</td>
-                <td>${row.lat.toFixed(5)}°</td><td>${row.lon.toFixed(5)}°</td>
-                <td><a href="https://maps.google.com/?q=${row.lat},${row.lon}" target="_blank">Open ↗</a></td></tr>`;
-            }).join("");
-            html += `<p style="font-size:0.78rem;color:#888;margin-bottom:0.4rem">Descent from the radar point, assuming ${p.assumed_mass_g} g at ${p.density_g_cm3} g/cm³${windCorrected ? ", wind-corrected" : " (vertical)"}.</p>
-              <table><thead><tr><th>Altitude</th><th>(km)</th><th>Fall time</th><th>UTC</th><th>Latitude</th><th>Longitude</th><th>Maps</th></tr></thead><tbody>${pRows}</tbody></table>`;
-          }
-
+          let html = `<div class="section-title" style="margin-bottom:0.5rem">Where to Look on Radar</div>`;
+          (p.warnings || []).forEach(w => { html += `<p class="warn-msg">⚠ ${w}</p>`; });
+          const pRows = p.predictions.map(row => {
+            const isGround = row.alt_m === 0;
+            return `<tr ${isGround ? 'style="background:#1a2a1a;font-weight:700"' : ''}>
+              <td>${isGround ? "Ground" : row.alt_ft.toLocaleString() + " ft"}</td>
+              <td>${(row.alt_m/1000).toFixed(1)} km</td><td>+${row.t_fall_s}s</td><td>${row.clock_utc}</td>
+              <td>${row.lat.toFixed(5)}°</td><td>${row.lon.toFixed(5)}°</td>
+              <td><a href="https://maps.google.com/?q=${row.lat},${row.lon}" target="_blank">Open ↗</a></td></tr>`;
+          }).join("");
+          html += `<p style="font-size:0.78rem;color:#888;margin-bottom:0.4rem">Descent from the dark-flight point, assuming ${p.assumed_mass_g} g at ${p.density_g_cm3} g/cm³${windCorrected ? ", wind-corrected" : " (vertical)"}. Fireball→point Δt = ${p.delta_t_s}s.</p>
+            <table><thead><tr><th>Altitude</th><th>(km)</th><th>Fall time</th><th>UTC</th><th>Latitude</th><th>Longitude</th><th>Maps</th></tr></thead><tbody>${pRows}</tbody></table>
+            <p style="font-size:0.72rem;color:#555;margin-top:0.5rem">Predicted clock times the rock passes each altitude (standard-atmosphere fall-time model).</p>`;
           inner.innerHTML = html;
         } catch(e) {
           inner.innerHTML = '<p class="error">Could not reach the server.</p>';
         }
-        btn.disabled = false; btn.textContent = "Analyze — Type, Location & Radar Prediction";
+        btn.disabled = false; btn.textContent = "Predict Radar Hit Location";
       }
 
       // ── Radiosonde sounding auto-fill (shared by Section C and Scenario 2) ──

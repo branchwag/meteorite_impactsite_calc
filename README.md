@@ -28,9 +28,7 @@ The app has two scenarios.
 - **B. Number of rocks** — Rayleigh and geometric radar scattering, forward (size → dBZ) and inverse (dBZ → size/count). Given the observed dBZ, range, and the fragment size from A, it reports how many rocks of that size are needed to produce the return.
 - **C. Ground location** — wind-corrects the descent from the radar hit down to the ground.
 
-**Scenario 2 — I have a dark flight point.** Uses the same inputs as Scenario 1 (fireball end time, dark-flight start altitude, and a radar return point) and runs the same A/B/C analysis. In addition, it predicts where to look on radar: projecting the descent downward (vertical, optionally wind-corrected) for an assumed 100 g chondrite and reporting the lat/lon and clock time the rock passes each lower altitude, down to the ground.
-
-The two scenarios share inputs and the A/B/C calculation — the difference is framing (Scenario 1 starts from a known radar hit; Scenario 2 from a dark-flight solution where the start altitude is known) and the extra radar-hit prediction in Scenario 2.
+**Scenario 2 — I have a dark flight point.** Predicts *where to look on radar*: given the fireball end time and a dark-flight point (lat/lon/altitude), it projects the descent downward (vertical, optionally wind-corrected) for an assumed 100 g chondrite and reports the lat/lon and clock time the rock passes each lower altitude, down to the ground. Type, size, number of rocks, and ground location are **not** computed here — they require an actual radar hit, which is Scenario 1.
 
 ---
 
@@ -49,7 +47,7 @@ The two scenarios share inputs and the A/B/C calculation — the difference is f
 ## Output
 
 - **Scenario 1:** meteorite type + mass/diameter per candidate type, a dBZ consistency check, and wind-corrected ground coordinates with Google Maps links.
-- **Scenario 2:** the same A/B/C output as Scenario 1, plus a "where to look on radar" table of predicted positions (altitude → fall time → UTC clock time → lat/lon) down to the ground, with Google Maps links.
+- **Scenario 2:** a "where to look on radar" table of predicted positions (altitude → fall time → UTC clock time → lat/lon) down to the ground, with Google Maps links.
 
 ---
 

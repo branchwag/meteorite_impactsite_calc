@@ -209,8 +209,6 @@ def analyze_hit():
         radar_lat       = float(data["radar_lat"])
         radar_lon       = float(data["radar_lon"])
         radar_alt_m     = float(data["radar_alt_m"])
-        radar_dbz       = data.get("radar_dbz")
-        radar_range_mi  = data.get("radar_range_mi")
         wind_mode       = data.get("wind_mode", "single")
         wind_single     = data.get("wind_single", {"speed_ms": 0, "direction_deg": 0})
         wind_layers     = data.get("wind_layers", [])
@@ -295,46 +293,13 @@ def analyze_hit():
                 "No meteorite type fits this fall time — this radar hit is likely not a meteorite."
             )
 
-        # ---- dBZ consistency check ----
-        dbz_checks = []
-        if radar_dbz is not None:
-            radar_dbz = float(radar_dbz)
-            # Range from the radar to the hit drives the resolution volume.
-            # Fall back to a typical NEXRAD range only if none was provided.
-            range_km = float(radar_range_mi) * 1.60934 if radar_range_mi else 80.0
-            for r in type_results:
-                if r.get("mass_g") is None:
-                    continue
-                d_cm = r["diameter_cm"]
-                n_frags = 1
-                # Estimate dBZ for a single fragment of this size
-                r_m       = (d_cm / 100.0) / 2.0
-                sigma     = math.pi * r_m**2
-                lambda_mm = 100.0  # S-band 10 cm
-                K2        = 0.93
-                V_r       = _nexrad_resolution_volume(range_km)
-                Ze  = (lambda_mm**4 / (math.pi**5 * K2)) * (sigma * 1e6 / V_r)
-                est_dbz = 10 * math.log10(Ze) if Ze > 0 else -99
-                delta_dbz = abs(est_dbz - radar_dbz)
-                # Number of rocks: total cross-section implied by the observed
-                # dBZ divided by one fragment's cross-section (Part B).
-                Ze_obs            = 10 ** (radar_dbz / 10.0)            # mm⁶/m³
-                sigma_total_m2    = Ze_obs * V_r * math.pi**5 * K2 / lambda_mm**4 / 1e6
-                n_rocks           = sigma_total_m2 / sigma if sigma > 0 else 0.0
-                dbz_checks.append({
-                    "type":      r["type"],
-                    "est_dbz":   round(est_dbz, 1),
-                    "obs_dbz":   round(radar_dbz, 1),
-                    "delta_dbz": round(delta_dbz, 1),
-                    "n_rocks":   round(n_rocks, 1),
-                    "note":      "consistent" if delta_dbz < 10 else "large discrepancy",
-                })
+        # Part B (number of rocks from the observed dBZ + range) is computed
+        # separately via /inverse_dbz once the fragment size is known from A.
 
         return jsonify({
             "delta_t_s":    round(delta_t, 1),
             "is_meteorite": is_meteorite,
             "type_results": type_results,
-            "dbz_checks":   dbz_checks,
             "errors":       errors,
             "warnings":     warnings,
         })
