@@ -3,15 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meteorite Strewn Field Calculator</title>
+    <title>Meteorite Impact Site Calculator</title>
     <style>
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
         font-family: "Segoe UI", sans-serif;
@@ -21,36 +15,119 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 2rem 1rem 4rem;
+        padding: 1.5rem 1rem 4rem;
       }
 
-      h1 {
-        font-size: 1.5rem;
-        color: #f0a500;
-        letter-spacing: 1px;
-        margin-bottom: 0.25rem;
-      }
-      .subtitle {
-        font-size: 0.82rem;
-        color: #666;
-        margin-bottom: 2rem;
-      }
+      h1 { font-size: 1.5rem; color: #f0a500; letter-spacing: 1px; margin-bottom: 0.2rem; }
+      .subtitle { font-size: 0.82rem; color: #555; margin-bottom: 1.5rem; }
 
-      .section {
+      /* ── Two-column layout ── */
+      .app-layout {
+        display: flex;
+        gap: 1.2rem;
         width: 100%;
-        max-width: 900px;
+        max-width: 1060px;
+        align-items: flex-start;
+      }
+      .main-content { flex: 1; min-width: 0; }
+
+      /* ── Sidebar ── */
+      .sidebar {
+        width: 185px;
+        flex-shrink: 0;
         background: #1a1a1a;
         border: 1px solid #2a2a2a;
         border-radius: 10px;
-        padding: 1.4rem;
-        margin-bottom: 1.2rem;
+        padding: 1rem 0.9rem;
+        position: sticky;
+        top: 1rem;
+      }
+      .sidebar-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #f0a500;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        border-bottom: 1px solid #2a2a2a;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.8rem;
+      }
+      .setting-group { margin-bottom: 0.75rem; }
+      .setting-group label {
+        display: block;
+        font-size: 0.7rem;
+        color: #888;
+        margin-bottom: 0.2rem;
+      }
+      .setting-group input {
+        width: 100%;
+        padding: 0.35rem 0.5rem;
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 5px;
+        color: #e0e0e0;
+        font-size: 0.85rem;
+      }
+      .setting-group input:focus { outline: none; border-color: #f0a500; }
+      .sidebar-hint { font-size: 0.68rem; color: #444; margin-top: 0.8rem; line-height: 1.5; }
+      .sidebar-sep {
+        border: none;
+        border-top: 1px solid #2a2a2a;
+        margin: 0.8rem 0;
       }
 
+      /* ── Scenario selector ── */
+      .what-section {
+        background: #1a1a1a;
+        border: 1px solid #2a2a2a;
+        border-radius: 10px;
+        padding: 1.2rem;
+        margin-bottom: 1.1rem;
+      }
+      .what-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #f0a500;
+        margin-bottom: 0.9rem;
+      }
+      .scenario-cards { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+      .scenario-card {
+        flex: 1;
+        min-width: 200px;
+        padding: 0.9rem 1rem;
+        background: #111;
+        border: 2px solid #333;
+        border-radius: 8px;
+        color: #666;
+        cursor: pointer;
+        text-align: left;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+      }
+      .scenario-card:hover { border-color: #555; color: #aaa; }
+      .scenario-card.active { border-color: #f0a500; color: #e0e0e0; background: #1a1a0a; }
+      .scenario-num {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #f0a500;
+        margin-bottom: 0.3rem;
+      }
+      .scenario-card.active .scenario-num { color: #ffc233; }
+
+      /* ── Shared section card ── */
+      .section {
+        background: #1a1a1a;
+        border: 1px solid #2a2a2a;
+        border-radius: 10px;
+        padding: 1.2rem;
+        margin-bottom: 1.1rem;
+      }
       .section-title {
         font-size: 0.95rem;
         font-weight: 700;
         color: #f0a500;
-        margin-bottom: 1rem;
+        margin-bottom: 0.9rem;
         border-bottom: 1px solid #2a2a2a;
         padding-bottom: 0.5rem;
         display: flex;
@@ -58,120 +135,91 @@
         align-items: center;
       }
 
-      .row {
+      /* ── A/B/C lettered section headers ── */
+      .abc-header {
         display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        margin-bottom: 0.6rem;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #e0e0e0;
+        border-bottom: 1px solid #2a2a2a;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.9rem;
+      }
+      .abc-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        background: #f0a500;
+        color: #000;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 0.85rem;
+        flex-shrink: 0;
       }
 
-      .field {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-width: 120px;
-      }
-      .field label {
-        font-size: 0.72rem;
-        color: #888;
-        margin-bottom: 0.2rem;
-      }
-      .field input {
-        padding: 0.45rem 0.65rem;
+      /* ── Form elements ── */
+      .row { display: flex; gap: 0.65rem; flex-wrap: wrap; margin-bottom: 0.55rem; }
+      .field { display: flex; flex-direction: column; flex: 1; min-width: 110px; }
+      .field label { font-size: 0.7rem; color: #888; margin-bottom: 0.2rem; }
+      .field input, .field select {
+        padding: 0.42rem 0.6rem;
         background: #111;
         border: 1px solid #333;
         border-radius: 6px;
         color: #e0e0e0;
-        font-size: 0.88rem;
+        font-size: 0.86rem;
       }
-      .field input:focus {
-        outline: none;
-        border-color: #f0a500;
-      }
+      .field input:focus, .field select:focus { outline: none; border-color: #f0a500; }
+      .hint { font-size: 0.68rem; color: #555; margin-top: 0.15rem; }
 
-      .add-btn,
-      .remove-btn {
-        padding: 0.35rem 0.8rem;
+      .add-btn, .remove-btn {
+        padding: 0.32rem 0.75rem;
         border-radius: 5px;
         border: none;
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         font-weight: 600;
         cursor: pointer;
       }
-      .add-btn {
-        background: #2a2a2a;
-        color: #f0a500;
-        border: 1px solid #f0a500;
-      }
-      .add-btn:hover {
-        background: #f0a500;
-        color: #000;
-      }
-      .remove-btn {
-        background: #2a2a2a;
-        color: #ff6b6b;
-        border: 1px solid #ff6b6b;
-        margin-left: 0.5rem;
-      }
-      .remove-btn:hover {
-        background: #ff6b6b;
-        color: #000;
-      }
+      .add-btn { background: #2a2a2a; color: #f0a500; border: 1px solid #f0a500; }
+      .add-btn:hover { background: #f0a500; color: #000; }
+      .remove-btn { background: #2a2a2a; color: #ff6b6b; border: 1px solid #ff6b6b; margin-left: 0.4rem; }
+      .remove-btn:hover { background: #ff6b6b; color: #000; }
 
       .entry {
         border: 1px solid #2a2a2a;
         border-radius: 8px;
-        padding: 0.85rem;
-        margin-bottom: 0.75rem;
+        padding: 0.8rem;
+        margin-bottom: 0.65rem;
       }
       .entry-header {
-        font-size: 0.75rem;
+        font-size: 0.73rem;
         color: #666;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.45rem;
         display: flex;
         justify-content: space-between;
       }
 
-      .hint {
-        font-size: 0.68rem;
-        color: #555;
-        margin-top: 0.15rem;
-      }
-
-      .wind-toggle {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-      }
+      /* ── Wind toggle ── */
+      .wind-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.9rem; }
       .toggle-btn {
-        padding: 0.4rem 1rem;
+        padding: 0.38rem 1rem;
         border-radius: 5px;
         border: 1px solid #333;
         background: #111;
         color: #888;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         cursor: pointer;
       }
-      .toggle-btn.active {
-        background: #f0a500;
-        color: #000;
-        border-color: #f0a500;
-        font-weight: 700;
-      }
+      .toggle-btn.active { background: #f0a500; color: #000; border-color: #f0a500; font-weight: 700; }
 
-      #wind-single-form,
-      #wind-layers-form {
-        display: none;
-      }
-      #wind-single-form.visible,
-      #wind-layers-form.visible {
-        display: block;
-      }
-
+      /* ── Buttons ── */
       .calc-btn {
         width: 100%;
-        max-width: 900px;
-        padding: 0.9rem;
+        padding: 0.85rem;
         background: #f0a500;
         color: #000;
         font-size: 1rem;
@@ -179,574 +227,813 @@
         border: none;
         border-radius: 8px;
         cursor: pointer;
-        margin-bottom: 1.2rem;
+        margin-bottom: 1.1rem;
       }
-      .calc-btn:hover {
-        background: #ffc233;
-      }
-      .calc-btn:disabled {
-        background: #444;
-        color: #888;
-        cursor: not-allowed;
-      }
-
-      #results {
-        display: none;
-        width: 100%;
-        max-width: 900px;
-      }
-
-      .results-section {
-        background: #1a1a1a;
-        border: 1px solid #2a2a2a;
-        border-radius: 10px;
-        padding: 1.4rem;
-        margin-bottom: 1rem;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 0.75rem;
-        font-size: 0.85rem;
-      }
-      th {
-        text-align: left;
-        color: #888;
-        font-weight: 600;
-        font-size: 0.75rem;
-        padding: 0.4rem 0.5rem;
-        border-bottom: 1px solid #2a2a2a;
-      }
-      td {
-        padding: 0.45rem 0.5rem;
-        border-bottom: 1px solid #1e1e1e;
-      }
-      tr:last-child td {
-        border-bottom: none;
-      }
-      td a {
-        color: #4a9eff;
-        text-decoration: none;
-        font-size: 0.78rem;
-      }
-      td a:hover {
-        text-decoration: underline;
-      }
-
-      .source-badge {
+      .calc-btn:hover { background: #ffc233; }
+      .calc-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+      .maps-btn {
         display: inline-block;
-        padding: 0.2rem 0.6rem;
-        border-radius: 4px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        background: #2a2a2a;
-        color: #f0a500;
-        margin-bottom: 0.75rem;
+        margin: 0.3rem 0.4rem 0 0;
+        padding: 0.5rem 1rem;
+        background: #1a3b6b;
+        color: #fff;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-decoration: none;
+        line-height: 1.4;
       }
-
+      .maps-btn:hover { background: #2457a0; }
       .download-btn {
         display: inline-block;
-        margin-top: 1rem;
-        padding: 0.55rem 1.2rem;
+        margin-top: 0.9rem;
+        padding: 0.5rem 1.1rem;
         background: #1a6b3a;
         color: #fff;
         border-radius: 6px;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         font-weight: 600;
         cursor: pointer;
         border: none;
       }
-      .download-btn:hover {
-        background: #228b50;
-      }
+      .download-btn:hover { background: #228b50; }
 
-      .error {
-        color: #ff6b6b;
-        font-size: 0.9rem;
-        padding: 0.75rem;
+      /* ── Results ── */
+      table { width: 100%; border-collapse: collapse; margin-top: 0.65rem; font-size: 0.83rem; }
+      th { text-align: left; color: #888; font-weight: 600; font-size: 0.72rem; padding: 0.38rem 0.45rem; border-bottom: 1px solid #2a2a2a; }
+      td { padding: 0.42rem 0.45rem; border-bottom: 1px solid #1e1e1e; }
+      tr:last-child td { border-bottom: none; }
+      td a { color: #4a9eff; text-decoration: none; font-size: 0.76rem; }
+      td a:hover { text-decoration: underline; }
+      .source-badge {
+        display: inline-block; padding: 0.18rem 0.55rem; border-radius: 4px;
+        font-size: 0.7rem; font-weight: 700; background: #2a2a2a; color: #f0a500;
+        margin-bottom: 0.65rem;
+      }
+      .error { color: #ff6b6b; font-size: 0.88rem; padding: 0.4rem 0; }
+      .warn-msg { color: #f0a500; font-size: 0.8rem; padding: 0.25rem 0; }
+
+      /* ── Collapsible explanation ── */
+      .explain-btn {
+        width: 100%;
+        padding: 0.6rem;
+        background: #1a1a1a;
+        color: #f0a500;
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.82rem;
+        margin-bottom: 0.9rem;
+        text-align: left;
+      }
+      .explain-btn:hover { background: #222; }
+      #explanation { display: none; margin-bottom: 1rem; }
+      #explanation pre {
+        background: #111; padding: 0.75rem; border-radius: 6px;
+        margin: 0.5rem 0; overflow-x: auto; color: #e0e0e0; font-size: 0.78rem;
+      }
+      #explanation h3 { color: #f0a500; margin: 0.9rem 0 0.6rem; font-size: 0.88rem; }
+      #explanation p, #explanation li { font-size: 0.8rem; line-height: 1.6; color: #ccc; }
+      #explanation ol, #explanation ul { margin: 0.4rem 0 0.4rem 1.4rem; }
+
+      @media (max-width: 680px) {
+        .app-layout { flex-direction: column; }
+        .sidebar { width: 100%; position: static; }
       }
     </style>
   </head>
   <body>
-    <h1>☄️ Meteorite Strewn Field Calculator</h1>
-    <p class="subtitle">
-      Enter radar hits, ground observations, and wind data to estimate the
-      strewn field.
-    </p>
+    <h1>☄️ Meteorite Impact Site Calculator</h1>
+    <p class="subtitle">Radar-based meteorite strewn field and type determination</p>
 
-    <!-- EXPLANATION TOGGLE -->
-    <button class="calc-btn" onclick="toggleExplanation()" style="background:#2a2a2a;color:#f0a500;border:1px solid #f0a500;margin-bottom:1.2rem;max-width:900px" id="explainToggle">
-      Calculation Explanation ▼
-    </button>
-    <div id="explanation" style="display:none;width:100%;max-width:900px;margin-bottom:1.2rem">
-      <div class="section" style="font-size:0.82rem;line-height:1.6;color:#ccc">
+    <div class="app-layout">
 
-        <h3 style="color:#f0a500;margin-bottom:0.8rem">1. Coordinate Conversion (LLA to ECEF)</h3>
-        <p>All lat/lon/altitude inputs are converted to Earth-Centered Earth-Fixed (ECEF) cartesian coordinates using a spherical Earth model (R = 6,371,000 m):</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">r = R + altitude
-x = r * cos(lat) * cos(lon)
-y = r * cos(lat) * sin(lon)
-z = r * sin(lat)</pre>
+      <!-- ════════════════════════════════════════════ MAIN CONTENT -->
+      <div class="main-content">
 
-        <h3 style="color:#f0a500;margin:1rem 0 0.8rem">2. Trajectory Determination</h3>
-
-        <p><strong style="color:#e0e0e0">2+ radar hits (best accuracy):</strong> A least-squares line is fit through the ECEF points using SVD (Singular Value Decomposition). The centroid of all points becomes the trajectory reference point, and the first principal component gives the direction:</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">centroid = mean(points)
-U, S, Vt = SVD(points - centroid)
-direction = Vt[0]  (flipped downward if needed)</pre>
-
-        <p><strong style="color:#e0e0e0">1 radar hit + ground observations:</strong> The trajectory direction is derived from ground observations (see below), but the radar hit anchors the line in 3D space.</p>
-
-        <p><strong style="color:#e0e0e0">1 radar hit alone (vertical descent):</strong> The trajectory is assumed to go straight down — the direction vector points from the radar hit toward Earth's center:</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">direction = -position / |position|</pre>
-
-        <p><strong style="color:#e0e0e0">2+ ground observations:</strong> Each observer defines a vertical plane through the fireball. The observer's azimuth and elevation are converted to a ray in ENU (East-North-Up), then rotated to ECEF:</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">ray_enu = [cos(el)*sin(az), cos(el)*cos(az), sin(el)]
-ray_ecef = R_enu_to_ecef * ray_enu</pre>
-        <p>The plane normal is the cross product of the ray and the observer's local "up" vector:</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">normal = cross(ray, up)
-normal = normal / |normal|</pre>
-        <p>Two planes intersect in a line — the trajectory. The direction is:</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">direction = cross(n1, n2)</pre>
-        <p>A point on the line is found by solving:</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">[n1]           [n1 . p1]
-[n2] * point = [n2 . p2]
-[dir]          [  0    ]</pre>
-
-        <h3 style="color:#f0a500;margin:1rem 0 0.8rem">3. Wind Vector</h3>
-        <p>Wind direction follows meteorological convention (direction wind blows FROM). It's converted to a movement vector in ENU:</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">toward = (from_direction + 180) mod 360
-wind_enu = [sin(toward), cos(toward), 0]</pre>
-        <p>In layers mode, the wind at a given altitude uses the first layer whose altitude is at or below the fragment's current altitude (sorted highest to lowest).</p>
-
-        <h3 style="color:#f0a500;margin:1rem 0 0.8rem">4. Fragment Landing Simulation</h3>
-        <p>For each of the 5 mass classes (1g, 10g, 100g, 500g, 1kg+), the fragment is walked down the trajectory in 1-second time steps. Terminal velocity scales with mass:</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">v_terminal = 50 * (mass_g / 100) ^ (1/6)  m/s</pre>
-        <p>Each time step:</p>
-        <ol style="margin:0.5rem 0 0.5rem 1.5rem">
-          <li>Move along trajectory: <code style="color:#f0a500">pos += direction * v_terminal</code></li>
-          <li>Look up wind at current altitude</li>
-          <li>Apply wind drift: <code style="color:#f0a500">pos += R_enu_to_ecef * wind_enu</code></li>
-          <li>Stop when altitude reaches 0</li>
-        </ol>
-        <p>Heavier fragments fall faster and drift less, landing uprange. Lighter fragments drift further downwind.</p>
-
-        <h3 style="color:#f0a500;margin:1rem 0 0.8rem">5. Strewn Field Ellipses</h3>
-        <p>Each landing point gets an ellipse drawn on the ground. The semi-minor axis is 5,000 m and the semi-major axis is 7,500 m (1.5x), aligned with the trajectory direction projected onto the horizontal plane:</p>
-        <pre style="background:#111;padding:0.8rem;border-radius:6px;margin:0.6rem 0;overflow-x:auto;color:#e0e0e0">major_axis = trajectory direction (z zeroed, normalized)
-minor_axis = cross(major_axis, [0, 0, 1])
-
-for angle in 0..360:
-  offset = cos(angle) * 7500 * major_axis
-         + sin(angle) * 5000 * minor_axis</pre>
-
-      </div>
-    </div>
-
-    <!-- RADAR HITS -->
-    <div class="section">
-      <div class="section-title">
-        Radar Hits
-        <button class="add-btn" onclick="addRadarHit()">+ Add Hit</button>
-      </div>
-      <p class="hint" style="margin-bottom: 0.75rem">
-        Lat/lon/altitude from the middle of each radar return. One hit assumes
-        vertical descent; two or more fits a trajectory line.
-      </p>
-      <div id="radar-hits"></div>
-    </div>
-
-    <!-- GROUND OBSERVATIONS -->
-    <div class="section">
-      <div class="section-title">
-        Ground Observations
-        <span style="color: #555; font-size: 0.75rem; font-weight: 400"
-          >(optional)</span
-        >
-        <button class="add-btn" onclick="addGroundObs()">
-          + Add Observation
-        </button>
-      </div>
-      <div id="ground-obs"></div>
-    </div>
-
-    <!-- WIND -->
-    <div class="section">
-      <div class="section-title">Wind Data</div>
-      <div class="wind-toggle">
-        <button
-          class="toggle-btn active"
-          id="btn-single"
-          onclick="setWindMode('single')"
-        >
-          Single Average
-        </button>
-        <button
-          class="toggle-btn"
-          id="btn-layers"
-          onclick="setWindMode('layers')"
-        >
-          By Altitude Layer
-        </button>
-      </div>
-
-      <div id="wind-single-form" class="visible">
-        <div class="row">
-          <div class="field">
-            <label>Speed (m/s)</label>
-            <input
-              type="number"
-              id="wind-spd"
-              step="any"
-              placeholder="e.g. 10"
-            />
-          </div>
-          <div class="field">
-            <label>Direction — coming FROM (°)</label>
-            <input
-              type="number"
-              id="wind-dir"
-              step="any"
-              placeholder="0=N 90=E 180=S 270=W"
-            />
+        <!-- SCENARIO SELECTOR -->
+        <div class="what-section">
+          <div class="what-title">What do you want to do?</div>
+          <div class="scenario-cards">
+            <button class="scenario-card active" id="card-1" onclick="setScenario(1)">
+              <div class="scenario-num">1</div>
+              I have a radar hit and meteor time — I want to know what type of meteorites fell and where they are on the ground.
+            </button>
+            <button class="scenario-card" id="card-2" onclick="setScenario(2)">
+              <div class="scenario-num">2</div>
+              I have a dark flight trajectory point — I want to calculate the strewn field.
+            </button>
           </div>
         </div>
-        <p class="hint">
-          Meteorological convention: direction the wind is blowing FROM.
-        </p>
-      </div>
 
-      <div id="wind-layers-form">
-        <p class="hint" style="margin-bottom: 0.75rem">
-          Each layer applies from its altitude down to the next layer.
-        </p>
-        <div id="wind-layers"></div>
-        <button
-          class="add-btn"
-          style="margin-top: 0.5rem"
-          onclick="addWindLayer()"
-        >
-          + Add Layer
-        </button>
-      </div>
-    </div>
+        <!-- ── SCENARIO 1 ── -->
+        <div id="scenario-1">
 
-    <!-- FRAGMENT PHYSICS -->
-    <div class="section">
-      <div class="section-title">Fragment Physics</div>
-      <div class="row">
-        <div class="field">
-          <label>Meteorite Type / Density</label>
-          <select id="density-select" onchange="onDensitySelect()" style="padding:0.45rem 0.65rem;background:#111;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:0.88rem;">
-            <option value="3.2">Chondrite (3.2 g/cm³)</option>
-            <option value="2.7">Eucrite / HED (2.7 g/cm³)</option>
-            <option value="2.5">Carbonaceous (2.5 g/cm³)</option>
-            <option value="7.9">Iron (7.9 g/cm³)</option>
+          <!-- A: TYPE OF METEORITE -->
+          <div class="section">
+            <div class="abc-header">
+              <span class="abc-badge">A</span>
+              Type of Meteorite
+            </div>
+
+            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem;margin-bottom:0.8rem">
+              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Fireball Info</div>
+              <div class="row">
+                <div class="field">
+                  <label>Fireball End Time UTC (HH:MM:SS)</label>
+                  <input type="time" step="1" id="hit-fireball-time" />
+                </div>
+                <div class="field">
+                  <label>Dark Flight Altitude (km)</label>
+                  <input type="number" id="hit-dark-alt-km" value="24" step="any" min="18" max="33" />
+                  <span class="hint">Default 24 km · valid range 18–33 km</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem;margin-bottom:0.8rem">
+              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Radar Hit (from NOAA WCT)</div>
+              <div class="row">
+                <div class="field">
+                  <label>Time UTC (HH:MM:SS)</label>
+                  <input type="time" step="1" id="hit-radar-time" />
+                </div>
+                <div class="field">
+                  <label>Latitude (°)</label>
+                  <input type="number" step="any" id="hit-lat" placeholder="33.5973" />
+                </div>
+                <div class="field">
+                  <label>Longitude (°)</label>
+                  <input type="number" step="any" id="hit-lon" placeholder="-97.2341" />
+                </div>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label>Altitude (ft)</label>
+                  <input type="number" step="any" id="hit-alt-ft" placeholder="82021" oninput="hitFtToM()" />
+                </div>
+                <div class="field">
+                  <label>Altitude (m)</label>
+                  <input type="number" step="any" id="hit-alt-m" placeholder="25000" readonly style="color:#888;border-style:dashed" />
+                </div>
+                <div class="field">
+                  <label>dBZ (optional)</label>
+                  <input type="number" step="any" id="hit-dbz" placeholder="e.g. 18" />
+                </div>
+                <div class="field">
+                  <label>Range (miles, optional)</label>
+                  <input type="number" step="any" id="hit-range-mi" placeholder="e.g. 45" />
+                </div>
+              </div>
+              <p class="hint">Altitude + dBZ from the WCT marker editor label. Range is informational only.</p>
+            </div>
+
+            <!-- A results -->
+            <div id="a-results" style="display:none;margin-top:0.5rem">
+              <div id="a-errors"></div>
+              <div id="a-warnings"></div>
+              <div id="a-table"></div>
+            </div>
+          </div>
+
+          <!-- B: NUMBER OF ROCKS IN THE AIR -->
+          <div class="section">
+            <div class="abc-header">
+              <span class="abc-badge">B</span>
+              Number of Rocks in the Air
+            </div>
+            <p class="hint" style="margin-bottom:0.75rem">Estimate the fragment count from a dBZ reading, or estimate what dBZ a known fragment cloud would produce.</p>
+
+            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem;margin-bottom:0.8rem">
+              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Estimate dBZ → Fragment Count (Inverse)</div>
+              <div class="row">
+                <div class="field">
+                  <label>Observed dBZ (from NOAA WCT)</label>
+                  <input type="number" step="any" id="b-inv-dbz" placeholder="e.g. 18" />
+                </div>
+                <div class="field">
+                  <label>Radar Range (km)</label>
+                  <input type="number" step="any" id="b-inv-range-km" placeholder="80" oninput="bInvKmToMi()" />
+                </div>
+                <div class="field">
+                  <label>Range (mi)</label>
+                  <input type="number" step="any" id="b-inv-range-mi" placeholder="49.7" oninput="bInvMiToKm()" />
+                </div>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label>Fragment diameter (cm) — from Section A or enter manually</label>
+                  <input type="number" step="any" id="b-inv-diam" placeholder="auto-filled from A" />
+                </div>
+                <div class="field">
+                  <label>Radar Wavelength</label>
+                  <select id="b-inv-wavelength" style="padding:0.42rem 0.6rem;background:#111;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:0.86rem">
+                    <option value="10">NEXRAD S-band (10 cm)</option>
+                    <option value="5">C-band (5 cm)</option>
+                    <option value="3">X-band (3 cm)</option>
+                  </select>
+                </div>
+              </div>
+              <button class="calc-btn" onclick="estimateCount()" style="margin-top:0.3rem;margin-bottom:0">Estimate Fragment Count</button>
+              <div id="b-inv-result" style="display:none;margin-top:0.6rem">
+                <table><thead><tr><th>Metric</th><th>Value</th></tr></thead>
+                <tbody id="b-inv-rows"></tbody></table>
+              </div>
+            </div>
+
+            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem">
+              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Fragment Count → Estimate dBZ (Forward)</div>
+              <div class="row">
+                <div class="field">
+                  <label>Number of Fragments</label>
+                  <input type="number" id="b-fwd-n" value="4" min="1" step="1" />
+                </div>
+                <div class="field">
+                  <label>Diameter (cm)</label>
+                  <input type="number" step="any" id="b-fwd-diam-cm" placeholder="10" oninput="bFwdCmToIn()" />
+                </div>
+                <div class="field">
+                  <label>Diameter (in)</label>
+                  <input type="number" step="any" id="b-fwd-diam-in" placeholder="3.94" oninput="bFwdInToCm()" />
+                </div>
+                <div class="field">
+                  <label>Radar Range (km)</label>
+                  <input type="number" step="any" id="b-fwd-range-km" placeholder="80" oninput="bFwdKmToMi()" />
+                </div>
+                <div class="field">
+                  <label>Range (mi)</label>
+                  <input type="number" step="any" id="b-fwd-range-mi" placeholder="49.7" oninput="bFwdMiToKm()" />
+                </div>
+                <div class="field">
+                  <label>Wavelength</label>
+                  <select id="b-fwd-wavelength" style="padding:0.42rem 0.6rem;background:#111;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:0.86rem">
+                    <option value="10">S-band (10 cm)</option>
+                    <option value="5">C-band (5 cm)</option>
+                    <option value="3">X-band (3 cm)</option>
+                  </select>
+                </div>
+              </div>
+              <button class="calc-btn" onclick="estimateDbzFwd()" style="margin-top:0.3rem;margin-bottom:0">Estimate dBZ</button>
+              <div id="b-fwd-result" style="display:none;margin-top:0.6rem">
+                <table><thead><tr><th>Metric</th><th>Value</th></tr></thead>
+                <tbody id="b-fwd-rows"></tbody></table>
+                <p id="b-fwd-context" style="margin-top:0.5rem;font-size:0.76rem;color:#aaa;font-style:italic"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- C: LOCATION ON THE GROUND -->
+          <div class="section">
+            <div class="abc-header">
+              <span class="abc-badge">C</span>
+              Location on the Ground — Wind Correction
+            </div>
+            <p class="hint" style="margin-bottom:0.75rem">Enter wind data, then click Analyze. The app uses the mass and density determined in Section A, corrected for wind, to give the ground search location.</p>
+
+            <!-- Wind -->
+            <div class="wind-toggle">
+              <button class="toggle-btn active" id="c-btn-single" onclick="setCWindMode('single')">Single Average</button>
+              <button class="toggle-btn" id="c-btn-layers" onclick="setCWindMode('layers')">By Altitude Layer</button>
+            </div>
+
+            <div id="c-wind-single" style="">
+              <div class="row">
+                <div class="field"><label>Wind Speed (m/s)</label><input type="number" id="c-wind-spd" step="any" placeholder="10" /></div>
+                <div class="field"><label>Direction — coming FROM (°)</label><input type="number" id="c-wind-dir" step="any" placeholder="270" /></div>
+              </div>
+              <p class="hint">Meteorological convention: direction the wind blows FROM.</p>
+            </div>
+
+            <div id="c-wind-layers" style="display:none">
+              <p class="hint" style="margin-bottom:0.65rem">Each layer applies from its altitude down to the next layer.</p>
+              <div id="c-wind-layer-list"></div>
+              <button class="add-btn" style="margin-top:0.4rem" onclick="addCWindLayer()">+ Add Layer</button>
+            </div>
+
+            <button class="calc-btn" onclick="analyzeHit()" style="margin-top:1rem">Analyze — Get Type, Count &amp; Location</button>
+
+            <!-- C results -->
+            <div id="c-results" style="display:none">
+              <div id="c-location-buttons" style="margin-top:0.5rem"></div>
+            </div>
+          </div>
+
+        </div><!-- /scenario-1 -->
+
+        <!-- ── SCENARIO 2 ── -->
+        <div id="scenario-2" style="display:none">
+
+          <div class="section">
+            <div class="section-title">
+              Radar Hits
+              <button class="add-btn" onclick="addRadarHit()">+ Add Hit</button>
+            </div>
+            <p class="hint" style="margin-bottom:0.65rem">Lat/lon/altitude from the middle of each radar return. One hit assumes vertical descent; two or more fits a trajectory line.</p>
+            <div id="radar-hits"></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">
+              Ground Observations
+              <span style="color:#555;font-size:0.72rem;font-weight:400">(optional)</span>
+              <button class="add-btn" onclick="addGroundObs()">+ Add Observation</button>
+            </div>
+            <div id="ground-obs"></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Wind Data</div>
+            <div class="wind-toggle">
+              <button class="toggle-btn active" id="btn-single" onclick="setWindMode('single')">Single Average</button>
+              <button class="toggle-btn" id="btn-layers" onclick="setWindMode('layers')">By Altitude Layer</button>
+            </div>
+            <div id="wind-single-form">
+              <div class="row">
+                <div class="field"><label>Speed (m/s)</label><input type="number" id="wind-spd" step="any" placeholder="10" /></div>
+                <div class="field"><label>Direction — coming FROM (°)</label><input type="number" id="wind-dir" step="any" placeholder="270" /></div>
+              </div>
+              <p class="hint">Meteorological convention: direction the wind is blowing FROM.</p>
+            </div>
+            <div id="wind-layers-form" style="display:none">
+              <p class="hint" style="margin-bottom:0.65rem">Each layer applies from its altitude down to the next layer.</p>
+              <div id="wind-layers"></div>
+              <button class="add-btn" style="margin-top:0.4rem" onclick="addWindLayer()">+ Add Layer</button>
+            </div>
+          </div>
+
+          <button class="calc-btn" id="calcBtn" onclick="calculate()">Calculate Strewn Field</button>
+
+          <div id="results" style="display:none">
+            <div class="section" id="results-inner"></div>
+          </div>
+
+        </div><!-- /scenario-2 -->
+
+        <!-- Calculation Explanation (shared) -->
+        <button class="explain-btn" onclick="toggleExplanation()" id="explainToggle">Calculation Explanation ▼</button>
+        <div id="explanation">
+          <div class="section" style="font-size:0.82rem;line-height:1.6;color:#ccc">
+            <h3>1. Coordinate Conversion (LLA → ECEF)</h3>
+            <p>All lat/lon/altitude inputs are converted to Earth-Centered Earth-Fixed (ECEF) cartesian coordinates (R = 6,371,000 m):</p>
+            <pre>r = R + altitude
+x = r·cos(lat)·cos(lon)
+y = r·cos(lat)·sin(lon)
+z = r·sin(lat)</pre>
+
+            <h3>2. Trajectory Determination (Scenario 2)</h3>
+            <p><strong style="color:#e0e0e0">2+ radar hits:</strong> SVD least-squares fit through ECEF points.</p>
+            <p><strong style="color:#e0e0e0">1 hit alone:</strong> Vertical descent — direction = −position/|position|.</p>
+            <p><strong style="color:#e0e0e0">Ground observations:</strong> Each observer defines a vertical plane; trajectory = cross product of two plane normals.</p>
+
+            <h3>3. Standard Atmosphere</h3>
+            <p>Air density ρ(h) and gravity g(h) are interpolated from the ISA table (0–33 km, 1 km steps):</p>
+            <pre>Alt (km)  ρ (kg/m³)   g (m/s²)
+   0       1.2250      9.0807
+  10       0.4127      9.0665
+  20       0.0880      9.0523
+  24       0.0463      9.0466
+  30       0.0180      9.0382</pre>
+
+            <h3>4. Terminal Velocity</h3>
+            <p>Full physics formula (force balance at terminal velocity), ρ and g re-evaluated at each altitude step:</p>
+            <pre>V = √( 8·D·g(h)·r / (3·ρ(h)·Cd) )
+
+D  = meteorite bulk density (kg/m³)
+r  = radius from M = (4/3)π r³ D
+ρ  = air density at altitude h
+Cd = drag coefficient (Settings panel, default 0.8)</pre>
+            <p>Default densities: OC 3.3 · CC 2.7 · Iron 7.2 g/cm³ (all editable in Settings).</p>
+
+            <h3>5. Section A — Type of Meteorite</h3>
+            <p>Observed fall time Δt = radar_hit_UTC − fireball_end_UTC (seconds). For each meteorite type, a binary search (log scale, 2 g–10 kg) finds the mass whose integrated fall time matches Δt:</p>
+            <pre>T_fall = ∫[h_radar → h_dark] dh / V_t(h, m, D, Cd)</pre>
+            <p>Sanity checks: dark flight altitude 18–33 km · Δt 60–600 s · radar alt below dark flight alt.</p>
+
+            <h3>6. Section B — Number of Rocks in the Air</h3>
+            <p>Uses the radar range equation with equivalent reflectivity Ze. Geometric backscatter (accurate for D ≥ λ):</p>
+            <pre>σ = π r²   (geometric)
+Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
+            <p>Rayleigh formula (Z = ΣD⁶/V_r, accurate for D ≪ λ) also shown for comparison.</p>
+
+            <h3>7. Section C — Wind Correction &amp; Ground Location</h3>
+            <p>Starting from the radar hit, the fragment falls straight down in 1 s steps. Terminal velocity and wind drift are applied at each step using the Standard Atmosphere:</p>
+            <ol>
+              <li>Compute V_t(h) at current altitude</li>
+              <li>pos += direction × V_t</li>
+              <li>Apply wind: pos += R_enu · wind_enu</li>
+              <li>Stop at altitude 0</li>
+            </ol>
+          </div>
+        </div>
+
+      </div><!-- /main-content -->
+
+      <!-- ════════════════════════════════════════════ SIDEBAR -->
+      <div class="sidebar">
+        <div class="sidebar-title">Settings</div>
+
+        <div class="setting-group">
+          <label>Drag Coefficient C<sub>d</sub></label>
+          <input type="number" id="s-cd" value="0.8" step="0.01" min="0.01" />
+        </div>
+
+        <hr class="sidebar-sep">
+
+        <div style="font-size:0.68rem;color:#f0a500;font-weight:700;margin-bottom:0.5rem;letter-spacing:0.5px">DENSITIES (g/cm³)</div>
+
+        <div class="setting-group">
+          <label>Ordinary Chondrite (OC)</label>
+          <input type="number" id="s-oc" value="3.3" step="0.1" min="0.5" />
+        </div>
+        <div class="setting-group">
+          <label>Carbonaceous (CC)</label>
+          <input type="number" id="s-cc" value="2.7" step="0.1" min="0.5" />
+        </div>
+        <div class="setting-group">
+          <label>Iron</label>
+          <input type="number" id="s-iron" value="7.2" step="0.1" min="0.5" />
+        </div>
+        <div class="setting-group">
+          <label>Strewn Field Calc (custom)</label>
+          <select id="s-strewn-type" onchange="onStrewnTypeChange()" style="padding:0.35rem 0.5rem;background:#111;border:1px solid #333;border-radius:5px;color:#e0e0e0;font-size:0.83rem;width:100%">
+            <option value="3.3">OC (3.3)</option>
+            <option value="2.7">CC (2.7)</option>
+            <option value="7.2">Iron (7.2)</option>
             <option value="custom">Custom…</option>
           </select>
+          <input type="number" id="s-strewn-custom" step="0.1" min="0.5" placeholder="g/cm³" style="display:none;margin-top:0.3rem;width:100%;padding:0.35rem 0.5rem;background:#111;border:1px solid #333;border-radius:5px;color:#e0e0e0;font-size:0.83rem" />
         </div>
-        <div class="field" id="density-custom-wrap" style="display:none">
-          <label>Custom Density (g/cm³)</label>
-          <input type="number" id="density-custom" step="any" placeholder="e.g. 3.5" min="0.1" />
-        </div>
-        <div class="field">
-          <label>Drag Coefficient C<sub>d</sub></label>
-          <input type="number" id="cd-input" step="any" value="0.8" min="0.01" placeholder="0.8" />
-        </div>
-      </div>
-      <p class="hint">C<sub>d</sub> ≈ 0.47 for ideal sphere; 0.6–1.0 for rough/irregular fragments. Terminal velocity uses the full physics formula: V = √(8Dgr / 3ρC<sub>d</sub>).</p>
-    </div>
 
-    <button class="calc-btn" id="calcBtn" onclick="calculate()">
-      Calculate Strewn Field
-    </button>
+        <p class="sidebar-hint">Used in all A/B/C calculations and the strewn field calculator.</p>
+      </div>
 
-    <div id="results">
-      <div class="results-section" id="results-inner"></div>
-    </div>
-
-    <!-- DBZ ESTIMATOR -->
-    <div class="section" style="margin-top:1.5rem">
-      <div class="section-title">Radar dBZ Estimator</div>
-      <p class="hint" style="margin-bottom:0.75rem">Estimate what a fragment cloud would look like on Doppler radar (NEXRAD WSR-88D default).</p>
-      <div class="row">
-        <div class="field">
-          <label>Number of Fragments</label>
-          <input type="number" id="dbz-n" value="4" min="1" step="1" />
-        </div>
-        <div class="field">
-          <label>Diameter (cm)</label>
-          <input type="number" id="dbz-diam-cm" step="any" placeholder="10" oninput="dbzCmToIn()" />
-        </div>
-        <div class="field">
-          <label>Diameter (in)</label>
-          <input type="number" id="dbz-diam-in" step="any" placeholder="3.94" oninput="dbzInToCm()" />
-        </div>
-      </div>
-      <div class="row">
-        <div class="field">
-          <label>Radar Range (km)</label>
-          <input type="number" id="dbz-range-km" step="any" placeholder="80" oninput="dbzKmToMi()" />
-        </div>
-        <div class="field">
-          <label>Radar Range (mi)</label>
-          <input type="number" id="dbz-range-mi" step="any" placeholder="49.7" oninput="dbzMiToKm()" />
-        </div>
-        <div class="field">
-          <label>Radar Wavelength</label>
-          <select id="dbz-wavelength" style="padding:0.45rem 0.65rem;background:#111;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:0.88rem;">
-            <option value="10">NEXRAD S-band (10 cm)</option>
-            <option value="5">C-band (5 cm)</option>
-            <option value="3">X-band (3 cm)</option>
-          </select>
-        </div>
-      </div>
-      <button class="calc-btn" onclick="estimateDbz()" style="margin-top:0.5rem;margin-bottom:0">Estimate dBZ</button>
-      <div id="dbz-result" style="margin-top:0.8rem;font-size:0.85rem;display:none">
-        <table>
-          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-          <tbody id="dbz-result-rows"></tbody>
-        </table>
-        <p id="dbz-context" style="margin-top:0.6rem;font-size:0.78rem;color:#aaa;font-style:italic"></p>
-      </div>
-    </div>
-
-    <!-- INVERSE DBZ -->
-    <div class="section">
-      <div class="section-title">Inverse dBZ — Infer Fragment Properties</div>
-      <p class="hint" style="margin-bottom:0.75rem">Given a dBZ reading from NEXRAD, back out what the fragment cloud looks like.</p>
-      <div class="row">
-        <div class="field">
-          <label>Observed dBZ</label>
-          <input type="number" id="inv-dbz" step="any" placeholder="15" />
-        </div>
-        <div class="field">
-          <label>Radar Range (km)</label>
-          <input type="number" id="inv-range-km" step="any" placeholder="80" oninput="invKmToMi()" />
-        </div>
-        <div class="field">
-          <label>Radar Range (mi)</label>
-          <input type="number" id="inv-range-mi" step="any" placeholder="49.7" oninput="invMiToKm()" />
-        </div>
-        <div class="field">
-          <label>Radar Wavelength</label>
-          <select id="inv-wavelength" style="padding:0.45rem 0.65rem;background:#111;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:0.88rem;">
-            <option value="10">NEXRAD S-band (10 cm)</option>
-            <option value="5">C-band (5 cm)</option>
-            <option value="3">X-band (3 cm)</option>
-          </select>
-        </div>
-      </div>
-      <div class="row" style="align-items:flex-end">
-        <div class="field">
-          <label>Known: Number of fragments (infers diameter)</label>
-          <input type="number" id="inv-n" step="1" min="1" placeholder="e.g. 4" />
-        </div>
-        <div class="field">
-          <label>Known: Diameter cm (infers count)</label>
-          <input type="number" id="inv-diam" step="any" placeholder="e.g. 10" />
-        </div>
-      </div>
-      <p class="hint">Fill in either or both optional fields — leave blank to get only total RCS.</p>
-      <button class="calc-btn" onclick="inverseDbz()" style="margin-top:0.5rem;margin-bottom:0">Calculate</button>
-      <div id="inv-result" style="margin-top:0.8rem;font-size:0.85rem;display:none">
-        <table>
-          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-          <tbody id="inv-result-rows"></tbody>
-        </table>
-      </div>
-    </div>
+    </div><!-- /app-layout -->
 
     <script>
-      let windMode = "single";
-
-      // ---- DENSITY / CD ----
-      function onDensitySelect() {
-        const sel = document.getElementById("density-select");
-        document.getElementById("density-custom-wrap").style.display =
-          sel.value === "custom" ? "" : "none";
-      }
-
-      function getDensity() {
-        const sel = document.getElementById("density-select");
-        if (sel.value === "custom") {
-          return parseFloat(document.getElementById("density-custom").value) || 3.2;
-        }
+      // ── Settings helpers ──────────────────────────────────────────
+      function getCd()      { return parseFloat(document.getElementById("s-cd").value)   || 0.8; }
+      function getDensityOC()   { return parseFloat(document.getElementById("s-oc").value)   || 3.3; }
+      function getDensityCC()   { return parseFloat(document.getElementById("s-cc").value)   || 2.7; }
+      function getDensityIron() { return parseFloat(document.getElementById("s-iron").value) || 7.2; }
+      function getStrewnDensity() {
+        const sel = document.getElementById("s-strewn-type");
+        if (sel.value === "custom")
+          return parseFloat(document.getElementById("s-strewn-custom").value) || 3.3;
         return parseFloat(sel.value);
       }
-
-      function getCd() {
-        return parseFloat(document.getElementById("cd-input").value) || 0.8;
+      function onStrewnTypeChange() {
+        const sel = document.getElementById("s-strewn-type");
+        document.getElementById("s-strewn-custom").style.display =
+          sel.value === "custom" ? "block" : "none";
       }
 
-      // ---- DBZ UNIT CONVERTERS ----
-      function dbzCmToIn() {
-        const v = parseFloat(document.getElementById("dbz-diam-cm").value);
-        document.getElementById("dbz-diam-in").value = isNaN(v) ? "" : (v / 2.54).toFixed(2);
-      }
-      function dbzInToCm() {
-        const v = parseFloat(document.getElementById("dbz-diam-in").value);
-        document.getElementById("dbz-diam-cm").value = isNaN(v) ? "" : (v * 2.54).toFixed(2);
-      }
-      function dbzKmToMi() {
-        const v = parseFloat(document.getElementById("dbz-range-km").value);
-        document.getElementById("dbz-range-mi").value = isNaN(v) ? "" : (v / 1.60934).toFixed(1);
-      }
-      function dbzMiToKm() {
-        const v = parseFloat(document.getElementById("dbz-range-mi").value);
-        document.getElementById("dbz-range-km").value = isNaN(v) ? "" : (v * 1.60934).toFixed(1);
-      }
-      function invKmToMi() {
-        const v = parseFloat(document.getElementById("inv-range-km").value);
-        document.getElementById("inv-range-mi").value = isNaN(v) ? "" : (v / 1.60934).toFixed(1);
-      }
-      function invMiToKm() {
-        const v = parseFloat(document.getElementById("inv-range-mi").value);
-        document.getElementById("inv-range-km").value = isNaN(v) ? "" : (v * 1.60934).toFixed(1);
+      // ── Scenario toggle ───────────────────────────────────────────
+      let currentScenario = 1;
+      function setScenario(n) {
+        currentScenario = n;
+        document.getElementById("scenario-1").style.display = n === 1 ? "" : "none";
+        document.getElementById("scenario-2").style.display = n === 2 ? "" : "none";
+        document.getElementById("card-1").className = "scenario-card" + (n === 1 ? " active" : "");
+        document.getElementById("card-2").className = "scenario-card" + (n === 2 ? " active" : "");
+        if (n === 2 && document.querySelectorAll("#radar-hits .entry").length === 0) {
+          addRadarHit();
+        }
       }
 
-      // ---- RADAR HITS ----
-      let radarCount = 0;
+      // ── Section C wind mode ───────────────────────────────────────
+      let cWindMode = "single";
+      let cLayerCount = 0;
+      function setCWindMode(mode) {
+        cWindMode = mode;
+        document.getElementById("c-wind-single").style.display  = mode === "single" ? "" : "none";
+        document.getElementById("c-wind-layers").style.display  = mode === "layers" ? "" : "none";
+        document.getElementById("c-btn-single").className = "toggle-btn" + (mode === "single" ? " active" : "");
+        document.getElementById("c-btn-layers").className = "toggle-btn" + (mode === "layers" ? " active" : "");
+      }
+      function addCWindLayer() {
+        cLayerCount++;
+        const id = cLayerCount;
+        const div = document.createElement("div");
+        div.className = "entry"; div.id = `cl-${id}`;
+        div.innerHTML = `
+          <div class="entry-header">Layer #${id}
+            <button class="remove-btn" onclick="removeEntry('cl-${id}')">Remove</button>
+          </div>
+          <div class="row">
+            <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="cl${id}-alt" placeholder="30000"/></div>
+            <div class="field"><label>Speed (m/s)</label><input type="number" step="any" id="cl${id}-spd" placeholder="15"/></div>
+            <div class="field"><label>Direction FROM (°)</label><input type="number" step="any" id="cl${id}-dir" placeholder="270"/></div>
+          </div>`;
+        document.getElementById("c-wind-layer-list").appendChild(div);
+      }
+      function collectCWindLayers() {
+        const layers = [];
+        document.querySelectorAll("[id^='cl-']").forEach(el => {
+          const n = el.id.split("-")[1];
+          const alt = parseFloat(document.getElementById(`cl${n}-alt`)?.value);
+          const spd = parseFloat(document.getElementById(`cl${n}-spd`)?.value);
+          const dir = parseFloat(document.getElementById(`cl${n}-dir`)?.value);
+          if (!isNaN(alt) && !isNaN(spd) && !isNaN(dir))
+            layers.push({ alt_m: alt, speed_ms: spd, direction_deg: dir });
+        });
+        return layers;
+      }
+
+      // ── Radar Hit Analysis helpers ────────────────────────────────
+      function hitFtToM() {
+        const ft = parseFloat(document.getElementById("hit-alt-ft").value);
+        document.getElementById("hit-alt-m").value = isNaN(ft) ? "" : (ft * 0.3048).toFixed(1);
+      }
+      function timeToSeconds(s) {
+        if (!s) return null;
+        const p = s.split(":").map(Number);
+        return p[0] * 3600 + p[1] * 60 + (p[2] || 0);
+      }
+
+      let lastTypeResults = null;
+
+      async function analyzeHit() {
+        const fireball_s = timeToSeconds(document.getElementById("hit-fireball-time").value);
+        const radar_s    = timeToSeconds(document.getElementById("hit-radar-time").value);
+        const lat        = parseFloat(document.getElementById("hit-lat").value);
+        const lon        = parseFloat(document.getElementById("hit-lon").value);
+        const alt_m      = parseFloat(document.getElementById("hit-alt-m").value);
+        const dark_km    = parseFloat(document.getElementById("hit-dark-alt-km").value) || 24;
+        const dbz_raw    = document.getElementById("hit-dbz").value;
+
+        // Show results areas
+        document.getElementById("a-results").style.display = "block";
+        document.getElementById("c-results").style.display = "block";
+        document.getElementById("a-errors").innerHTML = "";
+        document.getElementById("a-warnings").innerHTML = "";
+        document.getElementById("a-table").innerHTML = "<p style='color:#888;font-size:0.83rem'>Calculating…</p>";
+        document.getElementById("c-location-buttons").innerHTML = "";
+
+        if (fireball_s === null || radar_s === null) {
+          document.getElementById("a-errors").innerHTML = '<p class="error">⚠ Enter both fireball end time and radar hit time.</p>';
+          document.getElementById("a-table").innerHTML = "";
+          return;
+        }
+        if (isNaN(lat) || isNaN(lon) || isNaN(alt_m)) {
+          document.getElementById("a-errors").innerHTML = '<p class="error">⚠ Enter lat, lon, and altitude for the radar hit.</p>';
+          document.getElementById("a-table").innerHTML = "";
+          return;
+        }
+
+        const payload = {
+          fireball_end_s:     fireball_s,
+          radar_hit_s:        radar_s,
+          dark_flight_alt_km: dark_km,
+          radar_lat: lat, radar_lon: lon, radar_alt_m: alt_m,
+          wind_mode:   cWindMode,
+          wind_single: {
+            speed_ms:      parseFloat(document.getElementById("c-wind-spd").value) || 0,
+            direction_deg: parseFloat(document.getElementById("c-wind-dir").value) || 0,
+          },
+          wind_layers: collectCWindLayers(),
+          Cd: getCd(),
+        };
+        if (dbz_raw) payload.radar_dbz = parseFloat(dbz_raw);
+
+        try {
+          const resp = await fetch("/analyze_hit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const d = await resp.json();
+
+          if (d.errors && d.errors.length) {
+            document.getElementById("a-errors").innerHTML =
+              d.errors.map(e => `<p class="error">⚠ ${e}</p>`).join("");
+            document.getElementById("a-table").innerHTML = "";
+            return;
+          }
+          if (d.warnings && d.warnings.length) {
+            document.getElementById("a-warnings").innerHTML =
+              d.warnings.map(w => `<p class="warn-msg">⚠ ${w}</p>`).join("");
+          }
+
+          lastTypeResults = d.type_results;
+
+          // ── Section A: type/size table ──
+          const meteoriteLabel = d.is_meteorite
+            ? `<span style="color:#6f6;font-weight:700">✓ Meteorite candidate</span>`
+            : `<span style="color:#f66;font-weight:700">✗ Likely not a meteorite</span>`;
+
+          let aRows = d.type_results.map(r => {
+            if (r.mass_g === null)
+              return `<tr><td>${r.type}</td><td colspan="2" style="color:#555;font-style:italic">${r.note}</td></tr>`;
+            return `<tr style="background:#1a1a1a">
+              <td style="color:#6f6">${r.type}</td>
+              <td>${r.mass_g.toFixed(1)} g</td>
+              <td>${r.diameter_cm} cm / ${r.diameter_in} in</td>
+            </tr>`;
+          }).join("");
+
+          document.getElementById("a-table").innerHTML = `
+            <p style="font-size:0.8rem;color:#888;margin-bottom:0.4rem">Δt = <strong style="color:#e0e0e0">${d.delta_t_s} s</strong></p>
+            <p style="margin-bottom:0.55rem">${meteoriteLabel}</p>
+            <table>
+              <thead><tr><th>Type</th><th>Mass</th><th>Diameter</th></tr></thead>
+              <tbody>${aRows}</tbody>
+            </table>`;
+
+          // Auto-fill Section B diameter from first matched type
+          const firstMatch = d.type_results.find(r => r.mass_g !== null);
+          if (firstMatch) {
+            document.getElementById("b-inv-diam").value = firstMatch.diameter_cm;
+            document.getElementById("b-fwd-diam-cm").value = firstMatch.diameter_cm;
+            document.getElementById("b-fwd-diam-in").value = firstMatch.diameter_in;
+          }
+
+          // ── Section C: Google Maps buttons ──
+          let buttons = "";
+          d.type_results.forEach(r => {
+            if (r.mass_g !== null && r.landing_lat != null) {
+              buttons += `<a class="maps-btn"
+                href="https://maps.google.com/?q=${r.landing_lat},${r.landing_lon}"
+                target="_blank">
+                Open in Google Maps — ${r.type}<br>
+                <span style="font-size:0.73rem;opacity:0.8">${r.landing_lat.toFixed(5)}°, ${r.landing_lon.toFixed(5)}°</span>
+              </a>`;
+            }
+          });
+          document.getElementById("c-location-buttons").innerHTML = buttons ||
+            '<p style="color:#555;font-size:0.83rem">No landing locations (no matched types).</p>';
+
+        } catch(e) {
+          document.getElementById("a-table").innerHTML = '<p class="error">Could not reach the server.</p>';
+        }
+      }
+
+      // ── Section B unit converters ─────────────────────────────────
+      function bInvKmToMi() {
+        const v = parseFloat(document.getElementById("b-inv-range-km").value);
+        document.getElementById("b-inv-range-mi").value = isNaN(v) ? "" : (v/1.60934).toFixed(1);
+      }
+      function bInvMiToKm() {
+        const v = parseFloat(document.getElementById("b-inv-range-mi").value);
+        document.getElementById("b-inv-range-km").value = isNaN(v) ? "" : (v*1.60934).toFixed(1);
+      }
+      function bFwdCmToIn() {
+        const v = parseFloat(document.getElementById("b-fwd-diam-cm").value);
+        document.getElementById("b-fwd-diam-in").value = isNaN(v) ? "" : (v/2.54).toFixed(2);
+      }
+      function bFwdInToCm() {
+        const v = parseFloat(document.getElementById("b-fwd-diam-in").value);
+        document.getElementById("b-fwd-diam-cm").value = isNaN(v) ? "" : (v*2.54).toFixed(2);
+      }
+      function bFwdKmToMi() {
+        const v = parseFloat(document.getElementById("b-fwd-range-km").value);
+        document.getElementById("b-fwd-range-mi").value = isNaN(v) ? "" : (v/1.60934).toFixed(1);
+      }
+      function bFwdMiToKm() {
+        const v = parseFloat(document.getElementById("b-fwd-range-mi").value);
+        document.getElementById("b-fwd-range-km").value = isNaN(v) ? "" : (v*1.60934).toFixed(1);
+      }
+
+      async function estimateCount() {
+        const dbz  = parseFloat(document.getElementById("b-inv-dbz").value);
+        const rkm  = parseFloat(document.getElementById("b-inv-range-km").value);
+        const diam = parseFloat(document.getElementById("b-inv-diam").value);
+        const wl   = parseFloat(document.getElementById("b-inv-wavelength").value);
+        if (isNaN(dbz) || isNaN(rkm)) { alert("Enter dBZ and radar range."); return; }
+        const payload = { dbz, range_km: rkm, wavelength_cm: wl };
+        if (!isNaN(diam) && diam > 0) payload.diameter_cm = diam;
+        const resp = await fetch("/inverse_dbz", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+        const d = await resp.json();
+        const el = document.getElementById("b-inv-result");
+        el.style.display = "block";
+        if (d.error) { document.getElementById("b-inv-rows").innerHTML = `<tr><td colspan="2" class="error">⚠ ${d.error}</td></tr>`; return; }
+        let rows = `<tr><td>Total implied RCS</td><td>${d.sigma_total_m2.toExponential(3)} m² (${d.dbsm_total} dBsm)</td></tr>`;
+        if (d.implied_fragment_count !== undefined)
+          rows += `<tr><td style="color:#f0a500;font-weight:700">Implied fragment count</td><td style="color:#f0a500;font-weight:700">${d.implied_fragment_count}</td></tr>`;
+        document.getElementById("b-inv-rows").innerHTML = rows;
+      }
+
+      async function estimateDbzFwd() {
+        const n    = parseInt(document.getElementById("b-fwd-n").value) || 1;
+        const dcm  = parseFloat(document.getElementById("b-fwd-diam-cm").value);
+        const rkm  = parseFloat(document.getElementById("b-fwd-range-km").value);
+        const wl   = parseFloat(document.getElementById("b-fwd-wavelength").value);
+        if (isNaN(dcm) || isNaN(rkm)) { alert("Enter diameter and radar range."); return; }
+        const resp = await fetch("/dbz", { method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ n_fragments: n, diameter_cm: dcm, range_km: rkm, wavelength_cm: wl }) });
+        const d = await resp.json();
+        const el = document.getElementById("b-fwd-result");
+        el.style.display = "block";
+        if (d.error) { document.getElementById("b-fwd-rows").innerHTML = `<tr><td colspan="2" class="error">⚠ ${d.error}</td></tr>`; return; }
+        document.getElementById("b-fwd-rows").innerHTML = `
+          <tr><td>RCS per fragment</td><td>${d.sigma_per_m2.toExponential(3)} m² (${d.dbsm_per} dBsm)</td></tr>
+          <tr><td>Total RCS</td><td>${d.sigma_total_m2.toExponential(3)} m² (${d.dbsm_total} dBsm)</td></tr>
+          <tr><td style="color:#f0a500;font-weight:700">dBZ (geometric)</td><td style="color:#f0a500;font-weight:700">${d.dbz} dBZ</td></tr>
+          <tr><td style="color:#888">dBZ (Rayleigh)</td><td style="color:#888">${d.dbz_rayleigh} dBZ</td></tr>
+          <tr><td>Regime</td><td style="font-size:0.75rem">${d.scattering_regime}</td></tr>`;
+        document.getElementById("b-fwd-context").textContent = d.context;
+      }
+
+      // ── Scenario 2 ────────────────────────────────────────────────
+      let windMode = "single";
+      let radarCount = 0, obsCount = 0, layerCount = 0;
+
       function addRadarHit() {
         radarCount++;
         const id = radarCount;
         const div = document.createElement("div");
-        div.className = "entry";
-        div.id = `radar-${id}`;
+        div.className = "entry"; div.id = `radar-${id}`;
         div.innerHTML = `
-      <div class="entry-header">
-        Hit #${id}
-        <button class="remove-btn" onclick="removeEntry('radar-${id}')">Remove</button>
-      </div>
-      <div class="row">
-        <div class="field"><label>Latitude (°)</label><input type="number" step="any" id="r${id}-lat" placeholder="34.0522"/></div>
-        <div class="field"><label>Longitude (°)</label><input type="number" step="any" id="r${id}-lon" placeholder="-118.2437"/></div>
-        <div class="field"><label>Altitude (ft)</label><input type="number" step="any" id="r${id}-ft" placeholder="164042" oninput="ftToM('r${id}')"/></div>
-        <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="r${id}-alt" placeholder="50000" readonly style="color:#888;border-style:dashed"/></div>
-      </div>`;
+          <div class="entry-header">Hit #${id}
+            <button class="remove-btn" onclick="removeEntry('radar-${id}')">Remove</button>
+          </div>
+          <div class="row">
+            <div class="field"><label>Latitude (°)</label><input type="number" step="any" id="r${id}-lat" placeholder="34.0522"/></div>
+            <div class="field"><label>Longitude (°)</label><input type="number" step="any" id="r${id}-lon" placeholder="-118.2437"/></div>
+            <div class="field"><label>Altitude (ft)</label><input type="number" step="any" id="r${id}-ft" placeholder="164042" oninput="ftToM('r${id}')"/></div>
+            <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="r${id}-alt" readonly style="color:#888;border-style:dashed"/></div>
+          </div>`;
         document.getElementById("radar-hits").appendChild(div);
       }
 
-      // ---- GROUND OBS ----
-      let obsCount = 0;
       function addGroundObs() {
         obsCount++;
         const id = obsCount;
         const div = document.createElement("div");
-        div.className = "entry";
-        div.id = `obs-${id}`;
+        div.className = "entry"; div.id = `obs-${id}`;
         div.innerHTML = `
-      <div class="entry-header">
-        Observer #${id}
-        <button class="remove-btn" onclick="removeEntry('obs-${id}')">Remove</button>
-      </div>
-      <div class="row">
-        <div class="field"><label>Latitude (°)</label><input type="number" step="any" id="o${id}-lat" placeholder="34.0522"/></div>
-        <div class="field"><label>Longitude (°)</label><input type="number" step="any" id="o${id}-lon" placeholder="-118.2437"/></div>
-        <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="o${id}-alt" placeholder="100"/></div>
-        <div class="field"><label>Azimuth (°)</label><input type="number" step="any" id="o${id}-az" placeholder="0=N 90=E"/></div>
-        <div class="field"><label>Elevation (°)</label><input type="number" step="any" id="o${id}-el" placeholder="30"/></div>
-      </div>`;
+          <div class="entry-header">Observer #${id}
+            <button class="remove-btn" onclick="removeEntry('obs-${id}')">Remove</button>
+          </div>
+          <div class="row">
+            <div class="field"><label>Latitude (°)</label><input type="number" step="any" id="o${id}-lat" placeholder="34.0522"/></div>
+            <div class="field"><label>Longitude (°)</label><input type="number" step="any" id="o${id}-lon" placeholder="-118.2437"/></div>
+            <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="o${id}-alt" placeholder="100"/></div>
+            <div class="field"><label>Azimuth (°)</label><input type="number" step="any" id="o${id}-az" placeholder="0=N 90=E"/></div>
+            <div class="field"><label>Elevation (°)</label><input type="number" step="any" id="o${id}-el" placeholder="30"/></div>
+          </div>`;
         document.getElementById("ground-obs").appendChild(div);
       }
 
-      // ---- WIND LAYERS ----
-      let layerCount = 0;
       function addWindLayer() {
         layerCount++;
         const id = layerCount;
         const div = document.createElement("div");
-        div.className = "entry";
-        div.id = `layer-${id}`;
+        div.className = "entry"; div.id = `layer-${id}`;
         div.innerHTML = `
-      <div class="entry-header">
-        Layer #${id}
-        <button class="remove-btn" onclick="removeEntry('layer-${id}')">Remove</button>
-      </div>
-      <div class="row">
-        <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="l${id}-alt" placeholder="30000"/></div>
-        <div class="field"><label>Speed (m/s)</label><input type="number" step="any" id="l${id}-spd" placeholder="15"/></div>
-        <div class="field"><label>Direction FROM (°)</label><input type="number" step="any" id="l${id}-dir" placeholder="270"/></div>
-      </div>`;
+          <div class="entry-header">Layer #${id}
+            <button class="remove-btn" onclick="removeEntry('layer-${id}')">Remove</button>
+          </div>
+          <div class="row">
+            <div class="field"><label>Altitude (m)</label><input type="number" step="any" id="l${id}-alt" placeholder="30000"/></div>
+            <div class="field"><label>Speed (m/s)</label><input type="number" step="any" id="l${id}-spd" placeholder="15"/></div>
+            <div class="field"><label>Direction FROM (°)</label><input type="number" step="any" id="l${id}-dir" placeholder="270"/></div>
+          </div>`;
         document.getElementById("wind-layers").appendChild(div);
-      }
-
-      function toggleExplanation() {
-        const el = document.getElementById("explanation");
-        const btn = document.getElementById("explainToggle");
-        if (el.style.display === "none") {
-          el.style.display = "block";
-          btn.textContent = "Calculation Explanation \u25B2";
-        } else {
-          el.style.display = "none";
-          btn.textContent = "Calculation Explanation \u25BC";
-        }
       }
 
       function ftToM(prefix) {
         const ft = parseFloat(document.getElementById(`${prefix}-ft`)?.value);
-        const mField = document.getElementById(`${prefix}-alt`);
-        mField.value = isNaN(ft) ? "" : (ft * 0.3048).toFixed(1);
+        const m  = document.getElementById(`${prefix}-alt`);
+        if (m) m.value = isNaN(ft) ? "" : (ft * 0.3048).toFixed(1);
       }
-
-      function removeEntry(id) {
-        document.getElementById(id)?.remove();
-      }
+      function removeEntry(id) { document.getElementById(id)?.remove(); }
 
       function setWindMode(mode) {
         windMode = mode;
-        document.getElementById("wind-single-form").className =
-          mode === "single" ? "visible" : "";
-        document.getElementById("wind-layers-form").className =
-          mode === "layers" ? "visible" : "";
-        document.getElementById("btn-single").className =
-          "toggle-btn" + (mode === "single" ? " active" : "");
-        document.getElementById("btn-layers").className =
-          "toggle-btn" + (mode === "layers" ? " active" : "");
-        document.getElementById("wind-single-form").style.display =
-          mode === "single" ? "" : "none";
-        document.getElementById("wind-layers-form").style.display =
-          mode === "layers" ? "" : "none";
+        document.getElementById("wind-single-form").style.display = mode === "single" ? "" : "none";
+        document.getElementById("wind-layers-form").style.display = mode === "layers" ? "" : "none";
+        document.getElementById("btn-single").className = "toggle-btn" + (mode === "single" ? " active" : "");
+        document.getElementById("btn-layers").className = "toggle-btn" + (mode === "layers" ? " active" : "");
       }
 
-      // init with 1 empty radar hit
-      addRadarHit();
-      setWindMode("single");
-
-      // ---- COLLECT DATA ----
       function collectRadarHits() {
         const hits = [];
-        document.querySelectorAll("[id^='radar-']").forEach((el) => {
+        document.querySelectorAll("[id^='radar-']").forEach(el => {
           const n = el.id.split("-")[1];
           const lat = parseFloat(document.getElementById(`r${n}-lat`)?.value);
           const lon = parseFloat(document.getElementById(`r${n}-lon`)?.value);
           const alt = parseFloat(document.getElementById(`r${n}-alt`)?.value);
-          if (!isNaN(lat) && !isNaN(lon) && !isNaN(alt))
-            hits.push({ lat, lon, alt });
+          if (!isNaN(lat) && !isNaN(lon) && !isNaN(alt)) hits.push({ lat, lon, alt });
         });
         return hits;
       }
-
       function collectGroundObs() {
         const obs = [];
-        document.querySelectorAll("[id^='obs-']").forEach((el) => {
+        document.querySelectorAll("[id^='obs-']").forEach(el => {
           const n = el.id.split("-")[1];
           const lat = parseFloat(document.getElementById(`o${n}-lat`)?.value);
           const lon = parseFloat(document.getElementById(`o${n}-lon`)?.value);
-          const alt =
-            parseFloat(document.getElementById(`o${n}-alt`)?.value) || 0;
-          const az = parseFloat(document.getElementById(`o${n}-az`)?.value);
+          const alt = parseFloat(document.getElementById(`o${n}-alt`)?.value) || 0;
+          const az  = parseFloat(document.getElementById(`o${n}-az`)?.value);
           const el_ = parseFloat(document.getElementById(`o${n}-el`)?.value);
           if (!isNaN(lat) && !isNaN(lon) && !isNaN(az) && !isNaN(el_))
             obs.push({ lat, lon, alt, azimuth: az, elevation: el_ });
         });
         return obs;
       }
-
       function collectWindLayers() {
         const layers = [];
-        document.querySelectorAll("[id^='layer-']").forEach((el) => {
+        document.querySelectorAll("[id^='layer-']").forEach(el => {
           const n = el.id.split("-")[1];
           const alt = parseFloat(document.getElementById(`l${n}-alt`)?.value);
           const spd = parseFloat(document.getElementById(`l${n}-spd`)?.value);
@@ -757,235 +1044,75 @@ for angle in 0..360:
         return layers;
       }
 
-      // ---- CALCULATE ----
       async function calculate() {
-        const btn = document.getElementById("calcBtn");
-        const resultsDiv = document.getElementById("results");
+        const btn   = document.getElementById("calcBtn");
         const inner = document.getElementById("results-inner");
-
-        btn.disabled = true;
-        btn.textContent = "Calculating…";
-
+        btn.disabled = true; btn.textContent = "Calculating…";
         const payload = {
-          radar_hits: collectRadarHits(),
-          ground_obs: collectGroundObs(),
-          wind_mode: windMode,
-          wind_single: {
-            speed_ms:
-              parseFloat(document.getElementById("wind-spd").value) || 0,
-            direction_deg:
-              parseFloat(document.getElementById("wind-dir").value) || 0,
+          radar_hits:   collectRadarHits(),
+          ground_obs:   collectGroundObs(),
+          wind_mode:    windMode,
+          wind_single:  {
+            speed_ms:      parseFloat(document.getElementById("wind-spd").value) || 0,
+            direction_deg: parseFloat(document.getElementById("wind-dir").value) || 0,
           },
-          wind_layers: collectWindLayers(),
-          density_g_cm3: getDensity(),
-          Cd: getCd(),
+          wind_layers:  collectWindLayers(),
+          density_g_cm3: getStrewnDensity(),
+          Cd:            getCd(),
         };
-
         try {
-          const resp = await fetch("/calculate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
+          const resp = await fetch("/calculate", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
           const data = await resp.json();
-          resultsDiv.style.display = "block";
-
-          if (data.error) {
-            inner.innerHTML = `<p class="error">⚠ ${data.error}</p>`;
-          } else {
-            const sourceLabels = {
-              radar: "Radar (primary)",
-              "radar+obs": "Radar + Ground Obs",
-              "radar-single": "Single Radar Hit (vertical descent)",
-              observations: "Ground Observations",
-            };
-            let rows = data.landings
-              .map(
-                (l) => `
-          <tr>
-            <td>${l.label}</td>
-            <td>${l.lat.toFixed(5)}°</td>
-            <td>${l.lon.toFixed(5)}°</td>
-            <td><a href="https://maps.google.com/?q=${l.lat},${l.lon}" target="_blank">Open ↗</a></td>
-          </tr>`,
-              )
-              .join("");
-
-            inner.innerHTML = `
-          <div class="section-title" style="margin-bottom:0.75rem">Strewn Field Results</div>
-          <div class="source-badge">Trajectory source: ${sourceLabels[data.source] || data.source}</div>
-          <table>
-            <thead><tr><th>Mass Class</th><th>Latitude</th><th>Longitude</th><th>Maps</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-          <br/>
-          <p style="font-size:0.75rem;color:#555">Trajectory vector: [${data.trajectory_direction.join(", ")}]</p>
-          <button class="download-btn" id="dlBtn">Download GeoJSON</button>
-          <button class="download-btn" id="dlKmz" style="margin-left:0.5rem;background:#1a3b6b">Download KMZ (Google Earth)</button>
-        `;
-
-            document.getElementById("dlBtn").onclick = () => {
-              const blob = new Blob([JSON.stringify(data.geojson, null, 2)], {
-                type: "application/json",
-              });
-              const a = document.createElement("a");
-              a.href = URL.createObjectURL(blob);
-              a.download = "strewn_field.geojson";
-              a.click();
-            };
-
-            document.getElementById("dlKmz").onclick = async () => {
-              const resp = await fetch("/download_kmz", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ geojson: data.geojson }),
-              });
-              const blob = await resp.blob();
-              const a = document.createElement("a");
-              a.href = URL.createObjectURL(blob);
-              a.download = "strewn_field.kmz";
-              a.click();
-            };
-          }
-        } catch (e) {
-          resultsDiv.style.display = "block";
-          inner.innerHTML = `<p class="error">Could not reach the server.</p>`;
+          document.getElementById("results").style.display = "block";
+          if (data.error) { inner.innerHTML = `<p class="error">⚠ ${data.error}</p>`; return; }
+          const srcLabel = { radar:"Radar (primary)", "radar+obs":"Radar + Ground Obs",
+            "radar-single":"Single Radar Hit (vertical descent)", observations:"Ground Observations" };
+          let rows = data.landings.map(l => `
+            <tr>
+              <td>${l.label}</td>
+              <td>${l.lat.toFixed(5)}°</td>
+              <td>${l.lon.toFixed(5)}°</td>
+              <td><a href="https://maps.google.com/?q=${l.lat},${l.lon}" target="_blank">Open ↗</a></td>
+            </tr>`).join("");
+          inner.innerHTML = `
+            <div class="section-title" style="margin-bottom:0.65rem">Strewn Field Results</div>
+            <div class="source-badge">Source: ${srcLabel[data.source] || data.source}</div>
+            <table>
+              <thead><tr><th>Mass Class</th><th>Latitude</th><th>Longitude</th><th>Maps</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+            <br/>
+            <p style="font-size:0.72rem;color:#555">Trajectory: [${data.trajectory_direction.join(", ")}]</p>
+            <button class="download-btn" id="dlBtn">Download GeoJSON</button>
+            <button class="download-btn" id="dlKmz" style="margin-left:0.5rem;background:#1a3b6b">Download KMZ (Google Earth)</button>`;
+          document.getElementById("dlBtn").onclick = () => {
+            const blob = new Blob([JSON.stringify(data.geojson, null, 2)], { type:"application/json" });
+            const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+            a.download = "strewn_field.geojson"; a.click();
+          };
+          document.getElementById("dlKmz").onclick = async () => {
+            const r = await fetch("/download_kmz", { method:"POST", headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({ geojson: data.geojson }) });
+            const blob = await r.blob();
+            const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+            a.download = "strewn_field.kmz"; a.click();
+          };
+        } catch(e) {
+          document.getElementById("results").style.display = "block";
+          inner.innerHTML = '<p class="error">Could not reach the server.</p>';
         }
-
-        btn.disabled = false;
-        btn.textContent = "Calculate Strewn Field";
+        btn.disabled = false; btn.textContent = "Calculate Strewn Field";
       }
 
-      // ---- DBZ ESTIMATOR ----
-      async function estimateDbz() {
-        const n           = parseInt(document.getElementById("dbz-n").value) || 1;
-        const diam_cm     = parseFloat(document.getElementById("dbz-diam-cm").value);
-        const range_km    = parseFloat(document.getElementById("dbz-range-km").value);
-        const wavelength  = parseFloat(document.getElementById("dbz-wavelength").value);
-
-        if (isNaN(diam_cm) || isNaN(range_km)) {
-          alert("Please enter diameter (cm) and radar range (km).");
-          return;
+      function toggleExplanation() {
+        const el = document.getElementById("explanation");
+        const btn = document.getElementById("explainToggle");
+        if (el.style.display === "none" || el.style.display === "") {
+          el.style.display = "block"; btn.textContent = "Calculation Explanation ▲";
+        } else {
+          el.style.display = "none"; btn.textContent = "Calculation Explanation ▼";
         }
-
-        const resp = await fetch("/dbz", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ n_fragments: n, diameter_cm: diam_cm, range_km, wavelength_cm: wavelength }),
-        });
-        const d = await resp.json();
-        const el = document.getElementById("dbz-result");
-        el.style.display = "block";
-
-        if (d.error) {
-          document.getElementById("dbz-result-rows").innerHTML = `<tr><td colspan="2" class="error">⚠ ${d.error}</td></tr>`;
-          document.getElementById("dbz-context").textContent = "";
-          return;
-        }
-        document.getElementById("dbz-result-rows").innerHTML = `
-          <tr><td>RCS per fragment</td><td>${d.sigma_per_m2.toExponential(3)} m² (${d.dbsm_per} dBsm)</td></tr>
-          <tr><td>Total RCS (${n} fragments)</td><td>${d.sigma_total_m2.toExponential(3)} m² (${d.dbsm_total} dBsm)</td></tr>
-          <tr><td style="color:#f0a500;font-weight:700">Equivalent dBZ</td><td style="color:#f0a500;font-weight:700">${d.dbz} dBZ</td></tr>
-          <tr><td>Radar resolution volume</td><td>${(d.resolution_volume_m3/1e6).toFixed(1)} × 10⁶ m³</td></tr>
-        `;
-        document.getElementById("dbz-context").textContent = d.context;
       }
-
-      // ---- INVERSE DBZ ----
-      async function inverseDbz() {
-        const dbz         = parseFloat(document.getElementById("inv-dbz").value);
-        const range_km    = parseFloat(document.getElementById("inv-range-km").value);
-        const wavelength  = parseFloat(document.getElementById("inv-wavelength").value);
-        const n_raw       = document.getElementById("inv-n").value;
-        const diam_raw    = document.getElementById("inv-diam").value;
-
-        if (isNaN(dbz) || isNaN(range_km)) {
-          alert("Please enter dBZ and radar range (km).");
-          return;
-        }
-
-        const payload = { dbz, range_km, wavelength_cm: wavelength };
-        if (n_raw)    payload.n_fragments  = parseInt(n_raw);
-        if (diam_raw) payload.diameter_cm  = parseFloat(diam_raw);
-
-        const resp = await fetch("/inverse_dbz", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const d = await resp.json();
-        const el = document.getElementById("inv-result");
-        el.style.display = "block";
-
-        if (d.error) {
-          document.getElementById("inv-result-rows").innerHTML = `<tr><td colspan="2" class="error">⚠ ${d.error}</td></tr>`;
-          return;
-        }
-        let rows = `
-          <tr><td>Total implied RCS</td><td>${d.sigma_total_m2.toExponential(3)} m² (${d.dbsm_total} dBsm)</td></tr>
-        `;
-        if (d.implied_diameter_cm !== undefined)
-          rows += `<tr><td>Implied diameter (${n_raw} fragments)</td><td style="color:#f0a500;font-weight:700">${d.implied_diameter_cm} cm / ${d.implied_diameter_in} in</td></tr>`;
-        if (d.implied_fragment_count !== undefined)
-          rows += `<tr><td>Implied fragment count (${diam_raw} cm diam)</td><td style="color:#f0a500;font-weight:700">${d.implied_fragment_count}</td></tr>`;
-        document.getElementById("inv-result-rows").innerHTML = rows;
-      }
-
-      function loadSampleData() {
-        document.getElementById("radar-hits").innerHTML = "";
-        document.getElementById("ground-obs").innerHTML = "";
-        document.getElementById("wind-layers").innerHTML = "";
-        radarCount = 0;
-        obsCount = 0;
-        layerCount = 0;
-
-        // Radar hits — altitudes in feet as they'd come from the toolkit
-        const radarData = [
-          { lat: 34.10, lon: -118.30, ft: 164042 },
-          { lat: 34.08, lon: -118.28, ft: 131234 },
-          { lat: 34.06, lon: -118.26, ft: 98425 },
-        ];
-        radarData.forEach((h) => {
-          addRadarHit();
-          document.getElementById(`r${radarCount}-lat`).value = h.lat;
-          document.getElementById(`r${radarCount}-lon`).value = h.lon;
-          document.getElementById(`r${radarCount}-ft`).value = h.ft;
-          ftToM(`r${radarCount}`);
-        });
-
-        // Ground observations
-        const obsData = [
-          { lat: 34.0522, lon: -118.2437, alt: 100, az: 45, el: 30 },
-          { lat: 34.1522, lon: -118.1437, alt: 150, az: 220, el: 25 },
-        ];
-        obsData.forEach((o) => {
-          addGroundObs();
-          document.getElementById(`o${obsCount}-lat`).value = o.lat;
-          document.getElementById(`o${obsCount}-lon`).value = o.lon;
-          document.getElementById(`o${obsCount}-alt`).value = o.alt;
-          document.getElementById(`o${obsCount}-az`).value = o.az;
-          document.getElementById(`o${obsCount}-el`).value = o.el;
-        });
-
-        // Wind layers
-        setWindMode("layers");
-        const windData = [
-          { alt: 50000, spd: 20, dir: 260 },
-          { alt: 30000, spd: 15, dir: 270 },
-          { alt: 10000, spd: 8, dir: 280 },
-          { alt: 0, spd: 5, dir: 290 },
-        ];
-        windData.forEach((w) => {
-          addWindLayer();
-          document.getElementById(`l${layerCount}-alt`).value = w.alt;
-          document.getElementById(`l${layerCount}-spd`).value = w.spd;
-          document.getElementById(`l${layerCount}-dir`).value = w.dir;
-        });
-
-        document.getElementById("wind-spd").value = 10;
-        document.getElementById("wind-dir").value = 270;
-      }
-
     </script>
   </body>
 </html>
