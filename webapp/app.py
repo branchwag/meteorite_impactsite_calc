@@ -182,13 +182,13 @@ def fragment_landing(traj_point, traj_dir, mass_g, wind_mode, wind_single, wind_
 def index():
     return send_from_directory("static", "index.html")
 
+# Per-type plausible mass search ranges (grams), from the uncle's notes:
+# iron 5 g–10 kg, CC 2 g–500 g, ordinary chondrite 2 g–10 kg.
 METEORITE_TYPES = [
-    {"name": "Ordinary Chondrite (OC)", "density": 3.3},
-    {"name": "Carbonaceous (CC)",        "density": 2.7},
-    {"name": "Iron",                     "density": 7.2},
+    {"name": "Ordinary Chondrite (OC)", "density": 3.3, "min_g": 2.0, "max_g": 10000.0},
+    {"name": "Carbonaceous (CC)",        "density": 2.7, "min_g": 2.0, "max_g":   500.0},
+    {"name": "Iron",                     "density": 7.2, "min_g": 5.0, "max_g": 10000.0},
 ]
-FALL_MASS_MIN_G = 2.0
-FALL_MASS_MAX_G = 10000.0
 DARK_FLIGHT_ALT_MIN_M = 18000.0
 DARK_FLIGHT_ALT_MAX_M = 33000.0
 FALL_TIME_MIN_S = 60.0
@@ -258,7 +258,7 @@ def analyze_hit():
         for mt in METEORITE_TYPES:
             match = find_mass_for_fall_time(
                 delta_t, dark_alt_m, radar_alt_m, mt["density"], Cd,
-                FALL_MASS_MIN_G, FALL_MASS_MAX_G
+                mt["min_g"], mt["max_g"]
             )
             if match:
                 # Wind-corrected landing from radar hit straight down to ground
@@ -274,11 +274,13 @@ def analyze_hit():
                 match["type"]        = mt["name"]
                 match["density"]     = mt["density"]
             else:
+                hi = (f"{mt['max_g']/1000:.0f} kg" if mt["max_g"] >= 1000
+                      else f"{mt['max_g']:.0f} g")
                 match = {
                     "type":    mt["name"],
                     "density": mt["density"],
                     "mass_g":  None,
-                    "note":    f"No match in {FALL_MASS_MIN_G:.0f} g – {FALL_MASS_MAX_G/1000:.0f} kg range",
+                    "note":    f"No match in {mt['min_g']:.0f} g – {hi} range",
                 }
             type_results.append(match)
 
@@ -309,11 +311,17 @@ def analyze_hit():
                 Ze  = (lambda_mm**4 / (math.pi**5 * K2)) * (sigma * 1e6 / V_r)
                 est_dbz = 10 * math.log10(Ze) if Ze > 0 else -99
                 delta_dbz = abs(est_dbz - radar_dbz)
+                # Number of rocks: total cross-section implied by the observed
+                # dBZ divided by one fragment's cross-section (Part B).
+                Ze_obs            = 10 ** (radar_dbz / 10.0)            # mm⁶/m³
+                sigma_total_m2    = Ze_obs * V_r * math.pi**5 * K2 / lambda_mm**4 / 1e6
+                n_rocks           = sigma_total_m2 / sigma if sigma > 0 else 0.0
                 dbz_checks.append({
                     "type":      r["type"],
                     "est_dbz":   round(est_dbz, 1),
                     "obs_dbz":   round(radar_dbz, 1),
                     "delta_dbz": round(delta_dbz, 1),
+                    "n_rocks":   round(n_rocks, 1),
                     "note":      "consistent" if delta_dbz < 10 else "large discrepancy",
                 })
 

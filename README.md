@@ -24,11 +24,13 @@ meteorite_impactsite_calc/
 The app has two scenarios.
 
 **Scenario 1 — I have a radar hit.** Given the fireball end time and a radar return (time, lat/lon, altitude, dBZ, range), it:
-- **A. Type of meteorite** — uses the fall time (radar hit time − fireball end time) and the standard-atmosphere terminal-velocity model to back out which type fits (ordinary chondrite, carbonaceous, or iron) and the implied mass/diameter. If none fit the 2 g – 10 kg range, the hit is flagged as likely not a meteorite.
-- **B. Number of rocks** — Rayleigh and geometric radar scattering, forward (size → dBZ) and inverse (dBZ → size/count).
+- **A. Type of meteorite** — uses the fall time (radar hit time − fireball end time) and the standard-atmosphere terminal-velocity model to back out which type fits and the implied mass/diameter. Each type has its own plausible mass range (ordinary chondrite 2 g–10 kg, carbonaceous 2 g–500 g, iron 5 g–10 kg); if none fit, the hit is flagged as likely not a meteorite.
+- **B. Number of rocks** — Rayleigh and geometric radar scattering, forward (size → dBZ) and inverse (dBZ → size/count). Given the observed dBZ, range, and the fragment size from A, it reports how many rocks of that size are needed to produce the return.
 - **C. Ground location** — wind-corrects the descent from the radar hit down to the ground.
 
-**Scenario 2 — I have a dark flight point.** Given the fireball end time and a high-altitude dark-flight radar return, it projects the descent downward (vertical, optionally wind-corrected) for an assumed 100 g chondrite and predicts the lat/lon and clock time the rock passes each lower altitude — i.e. where and when to look on lower radar sweeps, down to the ground.
+**Scenario 2 — I have a dark flight point.** Uses the same inputs as Scenario 1 (fireball end time, dark-flight start altitude, and a radar return point) and runs the same A/B/C analysis. In addition, it predicts where to look on radar: projecting the descent downward (vertical, optionally wind-corrected) for an assumed 100 g chondrite and reporting the lat/lon and clock time the rock passes each lower altitude, down to the ground.
+
+The two scenarios share inputs and the A/B/C calculation — the difference is framing (Scenario 1 starts from a known radar hit; Scenario 2 from a dark-flight solution where the start altitude is known) and the extra radar-hit prediction in Scenario 2.
 
 ---
 
@@ -47,7 +49,7 @@ The app has two scenarios.
 ## Output
 
 - **Scenario 1:** meteorite type + mass/diameter per candidate type, a dBZ consistency check, and wind-corrected ground coordinates with Google Maps links.
-- **Scenario 2:** a table of predicted radar-hit positions (altitude → fall time → UTC clock time → lat/lon) down to the ground, with Google Maps links.
+- **Scenario 2:** the same A/B/C output as Scenario 1, plus a "where to look on radar" table of predicted positions (altitude → fall time → UTC clock time → lat/lon) down to the ground, with Google Maps links.
 
 ---
 
