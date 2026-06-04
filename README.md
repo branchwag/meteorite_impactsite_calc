@@ -1,51 +1,53 @@
-# Meteorite Strewn Field Calculator
+# Meteorite Impact Site Calculator
 
-A local network web app for estimating meteorite strewn fields by intersecting observation planes, fitting radar trajectories, applying wind correction, and modeling fragment scatter by mass.
+A local network web app for working radar-tracked meteorite falls. It determines meteorite type and size from fall time, sanity-checks the radar return against the Rayleigh/geometric scattering equations, applies wind correction, and predicts where on radar (and on the ground) to look.
 
 ---
 
 ## Project Structure
 
 ```
-plane_intersection/
+meteorite_impactsite_calc/
 ├── README.md
 ├── .gitignore
+├── meteor dark flight.xlsx   # source spreadsheet (Spherical tab = ISA table)
 └── webapp/
-    ├── app.py            # Flask web server
+    ├── app.py                # Flask web server
     └── static/
-        └── index.html    # Browser UI
+        └── index.html        # Browser UI
 ```
 
 ---
 
 ## How It Works
 
-Each observer watches a fireball cross the sky and records their location plus the azimuth and elevation of the fireball. Each observation defines a vertical plane through the sky — the meteorite's trajectory is the line where two planes intersect.
+The app has two scenarios.
 
-If radar data is available, the trajectory is instead fit directly through the radar hit points using least squares, which is significantly more accurate. A single radar hit assumes vertical descent. Wind correction is then applied per altitude layer to drift each fragment mass class to its estimated landing position, producing a strewn field ellipse for each class.
+**Scenario 1 — I have a radar hit.** Given the fireball end time and a radar return (time, lat/lon, altitude, dBZ, range), it:
+- **A. Type of meteorite** — uses the fall time (radar hit time − fireball end time) and the standard-atmosphere terminal-velocity model to back out which type fits (ordinary chondrite, carbonaceous, or iron) and the implied mass/diameter. If none fit the 2 g – 10 kg range, the hit is flagged as likely not a meteorite.
+- **B. Number of rocks** — Rayleigh and geometric radar scattering, forward (size → dBZ) and inverse (dBZ → size/count).
+- **C. Ground location** — wind-corrects the descent from the radar hit down to the ground.
+
+**Scenario 2 — I have a dark flight point.** Given the fireball end time and a high-altitude dark-flight radar return, it projects the descent downward (vertical, optionally wind-corrected) for an assumed 100 g chondrite and predicts the lat/lon and clock time the rock passes each lower altitude — i.e. where and when to look on lower radar sweeps, down to the ground.
 
 ---
 
 ## Inputs
 
-**Radar hits** — lat, lon, altitude from the middle of each radar return. Altitude is entered in feet (as provided by the NOAA Weather and Climate Toolkit) and automatically converted to meters. A single hit assumes vertical descent; two or more fits a trajectory line. Ground observations can optionally supplement the radar data.
+**Radar / dark-flight point** — time (UTC), lat, lon, altitude, dBZ, and range. Altitude is entered in feet (as provided by the NOAA Weather and Climate Toolkit) and auto-converted to meters. Dark-flight altitude must be 18–33 km.
 
-**Ground observations** (optional) — lat, lon, altitude of the observer plus azimuth (compass bearing the fireball traveled toward) and elevation above the horizon in degrees. Used when radar data is unavailable or to supplement a single radar hit.
+**Fireball end time** (UTC) — from camera footage.
 
-**Wind data** — either a single average wind speed and direction, or speed and direction at multiple altitude layers (e.g. from a weather balloon sounding at weather.uwyo.edu). Direction follows meteorological convention: the direction the wind is blowing FROM.
+**Wind data** — either a single average wind speed and direction, or speed and direction at multiple altitude layers (e.g. from a radiosonde sounding at weather.uwyo.edu/upperair/sounding.html). Direction follows meteorological convention: the direction the wind is blowing FROM.
 
-A **Load Sample Data** button is available to pre-fill the form with example inputs for testing.
+**Settings** (right sidebar) — drag coefficient (default 0.8) and per-type densities (OC 3.3, CC 2.7, Iron 7.2 g/cm³).
 
 ---
 
 ## Output
 
-- Estimated landing coordinates for five fragment mass classes: 1g, 10g, 100g, 500g, 1kg+
-- Strewn field ellipses per mass class
-- Trajectory centerline
-- Google Maps links for each landing point
-- GeoJSON file download (loadable in Google Maps or geojson.io)
-- KMZ file download (loadable in Google Earth)
+- **Scenario 1:** meteorite type + mass/diameter per candidate type, a dBZ consistency check, and wind-corrected ground coordinates with Google Maps links.
+- **Scenario 2:** a table of predicted radar-hit positions (altitude → fall time → UTC clock time → lat/lon) down to the ground, with Google Maps links.
 
 ---
 
@@ -58,21 +60,34 @@ conda install numpy flask
 
 ## Run
 
+The bind address is controlled by the `HOST` env var (default `0.0.0.0`); `PORT` defaults to `5000`.
+
+**Local dev (this machine):** bind to localhost so the dev instance stays on this computer only and can't be confused with the Pi's prod instance.
+
 ```bash
 cd webapp
-python app.py
+HOST=127.0.0.1 python app.py
+# browse http://localhost:5000
+```
+
+`debug=True` is on, so edits auto-reload — no need to restart after each change.
+
+**Prod (Raspberry Pi):** bind to all interfaces so other devices on the LAN can reach it.
+
+```bash
+cd webapp
+python app.py          # HOST defaults to 0.0.0.0
 ```
 
 If port 5000 is already in use from a previous session:
 
 ```bash
 pkill -f app.py
-python app.py
 ```
 
-## Access
+## Access (prod / LAN)
 
-Find your local IP:
+Find the Pi's local IP:
 
 ```bash
 ip addr show | grep 'inet ' | grep -v 127
@@ -83,6 +98,8 @@ Use the `wlan0` address, e.g. `192.168.1.213`. Anyone on the same WiFi opens:
 ```
 http://192.168.1.213:5000
 ```
+
+Dev and prod can both use port 5000 — they're different hosts, so there's no conflict.
 
 ---
 
@@ -101,6 +118,7 @@ conda install numpy flask
 
 ## Notes
 
-- Azimuth and elevation are the most error-prone inputs when using ground observations. Camera or dashcam footage gives more accurate angles than eyeballing.
+- The fireball end time comes from camera/dashcam footage; an accurate UTC time is the most important input for the fall-time calculation.
+- Air density and gravity are read from the `Spherical` tab of `meteor dark flight.xlsx` (ISA, 0–30 km, with 31–33 km extrapolated). Terminal velocities and fall times are validated against that spreadsheet.
 - The Tailscale IP (`tailscale0`) can also reach the web app if the other device is on the same Tailscale network.
 - `nohup.out` is gitignored — it is generated when running the server in the background with `nohup python app.py &`.
