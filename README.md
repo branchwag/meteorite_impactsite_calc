@@ -38,7 +38,7 @@ The app has two scenarios.
 
 **Fireball end time** (UTC) — from camera footage.
 
-**Wind data** — either a single average wind speed and direction, or speed and direction at multiple altitude layers (e.g. from a radiosonde sounding at weather.uwyo.edu/upperair/sounding.html). Direction follows meteorological convention: the direction the wind is blowing FROM.
+**Wind data** — either a single average wind speed and direction, or speed and direction at multiple altitude layers. Layers can be entered by hand or auto-filled with **Fetch nearest sounding**: the backend finds the closest active radiosonde station to the point (IGRA station list), pulls that station's University of Wyoming sounding for the closest synoptic hour to the entered time, and fills the altitude-layer table (heights in metres, knots converted to m/s). Direction follows meteorological convention: the direction the wind is blowing FROM. Sources: weather.uwyo.edu/upperair/sounding.html and the IGRA station list at ncei.noaa.gov.
 
 **Settings** (right sidebar) — drag coefficient (default 0.8) and per-type densities (OC 3.3, CC 2.7, Iron 7.2 g/cm³).
 

@@ -1,3 +1,5 @@
 nohup.out
 __pycache__/
 *.pyc
+igra_stations.json
+notes.txt

@@ -1,6 +1,12 @@
 from flask import Flask, request, jsonify, send_from_directory
 import numpy as np
 import math
+import os
+import json
+import ssl
+import urllib.request
+import urllib.parse
+import urllib.error
 
 app = Flask(__name__, static_folder="static")
 
@@ -556,8 +562,182 @@ def predict_radar():
         return jsonify({"errors": [str(e)]}), 500
 
 
+# ---------- Radiosonde wind sounding (IGRA station list + UWyo data) -----
+# The browser can't fetch these sources directly (no CORS), so the Flask
+# backend proxies them: find the nearest active radiosonde station to the
+# point, pull that station's University of Wyoming sounding for the closest
+# synoptic hour, and turn it into altitude wind layers.
+
+IGRA_STATION_URL = "https://www.ncei.noaa.gov/pub/data/igra/igra2-station-list.txt"
+UWYO_URL         = "http://weather.uwyo.edu/cgi-bin/sounding"
+_STATION_CACHE   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "igra_stations.json")
+KNOTS_TO_MS      = 0.514444
+_stations_mem    = None  # in-process cache
+
+def _http_get(url, timeout=30):
+    """GET a URL as text, tolerating environments with broken cert chains."""
+    req = urllib.request.Request(url, headers={"User-Agent": "meteorite-impactsite-calc"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read().decode("utf-8", "replace")
+    except (ssl.SSLError, urllib.error.URLError):
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
+            return r.read().decode("utf-8", "replace")
+
+def _load_stations():
+    """Return [{stnm, lat, lon, name, last_year}] for active WMO stations.
+    Downloads and caches the IGRA station list on first use."""
+    global _stations_mem
+    if _stations_mem is not None:
+        return _stations_mem
+    if os.path.exists(_STATION_CACHE):
+        with open(_STATION_CACHE) as f:
+            _stations_mem = json.load(f)
+        return _stations_mem
+
+    text = _http_get(IGRA_STATION_URL)
+    stations = []
+    for line in text.splitlines():
+        if len(line) < 81:
+            continue
+        sid = line[0:11]
+        # Network char 'M' => station carries a WMO number (= UWyo STNM).
+        if sid[2] != "M":
+            continue
+        try:
+            lat = float(line[12:20]); lon = float(line[21:30])
+            last_year = int(line[77:81])
+        except ValueError:
+            continue
+        if lat <= -98.0 or lon <= -998.0:   # IGRA missing-value sentinels
+            continue
+        stations.append({
+            "stnm": sid[6:11], "lat": lat, "lon": lon,
+            "name": line[41:71].strip(), "last_year": last_year,
+        })
+    try:
+        with open(_STATION_CACHE, "w") as f:
+            json.dump(stations, f)
+    except OSError:
+        pass
+    _stations_mem = stations
+    return stations
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    R = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1); dl = math.radians(lon2 - lon1)
+    a = math.sin(dp/2)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+    return 2 * R * math.asin(math.sqrt(a))
+
+def _nearest_station(lat, lon, min_last_year=2015):
+    best, best_d = None, 1e18
+    for s in _load_stations():
+        if s["last_year"] < min_last_year:   # skip decommissioned sites
+            continue
+        d = _haversine_km(lat, lon, s["lat"], s["lon"])
+        if d < best_d:
+            best, best_d = s, d
+    if best is None:
+        return None, None
+    return best, best_d
+
+def _parse_uwyo_sounding(html):
+    """Pull (alt_m, dir_deg, speed_ms) rows out of the first <PRE> data table."""
+    lo = html.find("<PRE>")
+    hi = html.find("</PRE>", lo + 1)
+    if lo < 0 or hi < 0:
+        return []
+    block = html[lo + 5:hi]
+    rows = []
+    for line in block.splitlines():
+        # Data rows are fixed-width 7-char fields; headers contain letters.
+        if len(line) < 56 or not line[0:7].strip().replace(".", "").isdigit():
+            continue
+        try:
+            hght = float(line[7:14])
+            drct = line[42:49].strip()
+            sknt = line[49:56].strip()
+        except ValueError:
+            continue
+        if not drct or not sknt:   # wind not reported at this level
+            continue
+        try:
+            rows.append((hght, float(drct), float(sknt) * KNOTS_TO_MS))
+        except ValueError:
+            continue
+    return rows
+
+def _thin_layers(rows, min_gap_m=750.0):
+    """Reduce dense sounding levels to ~one per min_gap_m, keeping the ends."""
+    if not rows:
+        return []
+    rows = sorted(rows, key=lambda r: r[0])
+    kept = [rows[0]]
+    for r in rows[1:-1]:
+        if r[0] - kept[-1][0] >= min_gap_m:
+            kept.append(r)
+    if rows[-1] is not kept[-1]:
+        kept.append(rows[-1])
+    return kept
+
+def _synoptic_candidates(hour):
+    """Ordered synoptic hours to try, nearest-first (00/12 preferred)."""
+    order = sorted([0, 6, 12, 18], key=lambda h: (min(abs(h - hour), 24 - abs(h - hour)),
+                                                   0 if h in (0, 12) else 1))
+    return order
+
+@app.route("/fetch_wind", methods=["POST"])
+def fetch_wind():
+    data = request.get_json()
+    try:
+        lat = float(data["lat"]); lon = float(data["lon"])
+        date = str(data["date"])               # YYYY-MM-DD
+        hour = int(data.get("hour", 12))
+        year, month, day = date.split("-")
+        station, dist_km = _nearest_station(lat, lon)
+        if station is None:
+            return jsonify({"error": "No radiosonde station found."}), 502
+
+        last_err = None
+        for h in _synoptic_candidates(hour):
+            ddhh = f"{int(day):02d}{h:02d}"
+            qs = urllib.parse.urlencode({
+                "region": "naconf", "TYPE": "TEXT:LIST",
+                "YEAR": year, "MONTH": f"{int(month):02d}",
+                "FROM": ddhh, "TO": ddhh, "STNM": station["stnm"],
+            })
+            try:
+                html = _http_get(f"{UWYO_URL}?{qs}")
+            except Exception as e:
+                last_err = str(e); continue
+            rows = _parse_uwyo_sounding(html)
+            if rows:
+                layers = [{"alt_m": round(a, 1),
+                           "direction_deg": round(d, 1),
+                           "speed_ms": round(s, 2)} for a, d, s in _thin_layers(rows)]
+                return jsonify({
+                    "station": {"stnm": station["stnm"], "name": station["name"],
+                                "lat": station["lat"], "lon": station["lon"],
+                                "distance_km": round(dist_km, 1)},
+                    "used_time_utc": f"{year}-{int(month):02d}-{int(day):02d} {h:02d}Z",
+                    "n_levels": len(layers),
+                    "layers": layers,
+                })
+        return jsonify({"error": f"No sounding found for station {station['stnm']} "
+                                 f"({station['name']}) near {date}. {last_err or ''}".strip(),
+                        "station": {"stnm": station["stnm"], "name": station["name"],
+                                    "distance_km": round(dist_km, 1)}}), 404
+    except KeyError as e:
+        return jsonify({"error": f"Missing required field: {e}"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
-    import os
     # HOST defaults to 0.0.0.0 so the Raspberry Pi can serve the LAN in prod.
     # For local dev, run `HOST=127.0.0.1 python app.py` to bind localhost only.
     host = os.environ.get("HOST", "0.0.0.0")

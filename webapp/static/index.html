@@ -506,6 +506,17 @@
 
             <div id="c-wind-layers" style="display:none">
               <p class="hint" style="margin-bottom:0.65rem">Each layer applies from its altitude down to the next layer.</p>
+              <div style="background:#0c1420;border:1px solid #1d3a5f;border-radius:7px;padding:0.7rem;margin-bottom:0.7rem">
+                <div style="font-size:0.72rem;color:#9cf;font-weight:700;margin-bottom:0.5rem">Auto-fill from radiosonde sounding</div>
+                <div class="row">
+                  <div class="field"><label>Sounding Date (UTC)</label><input type="date" id="c-sounding-date" /></div>
+                  <div class="field" style="align-self:end">
+                    <button class="add-btn" onclick="fetchSounding('c')">Fetch nearest sounding</button>
+                  </div>
+                </div>
+                <p class="hint">Uses the radar hit's lat/lon and time to find the closest station (UWyo / IGRA).</p>
+                <p id="c-sounding-status" style="font-size:0.76rem;margin-top:0.4rem"></p>
+              </div>
               <div id="c-wind-layer-list"></div>
               <button class="add-btn" style="margin-top:0.4rem" onclick="addCWindLayer()">+ Add Layer</button>
             </div>
@@ -594,6 +605,17 @@
             </div>
             <div id="s2-wind-layers" style="display:none">
               <p class="hint" style="margin-bottom:0.65rem">Each layer applies from its altitude down to the next layer (radiosonde sounding).</p>
+              <div style="background:#0c1420;border:1px solid #1d3a5f;border-radius:7px;padding:0.7rem;margin-bottom:0.7rem">
+                <div style="font-size:0.72rem;color:#9cf;font-weight:700;margin-bottom:0.5rem">Auto-fill from radiosonde sounding</div>
+                <div class="row">
+                  <div class="field"><label>Sounding Date (UTC)</label><input type="date" id="s2-sounding-date" /></div>
+                  <div class="field" style="align-self:end">
+                    <button class="add-btn" onclick="fetchSounding('s2')">Fetch nearest sounding</button>
+                  </div>
+                </div>
+                <p class="hint">Uses the dark-flight point's lat/lon and time to find the closest station (UWyo / IGRA).</p>
+                <p id="s2-sounding-status" style="font-size:0.76rem;margin-top:0.4rem"></p>
+              </div>
               <div id="s2-wind-layer-list"></div>
               <button class="add-btn" style="margin-top:0.4rem" onclick="addS2WindLayer()">+ Add Layer</button>
             </div>
@@ -1096,6 +1118,64 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
         }
         btn.disabled = false; btn.textContent = "Predict Radar Hit Location";
       }
+
+      // ── Radiosonde sounding auto-fill (shared by Section C and Scenario 2) ──
+      async function fetchSounding(scn) {
+        const cfg = scn === 'c'
+          ? { lat:'hit-lat', lon:'hit-lon', time:'hit-radar-time', date:'c-sounding-date',
+              status:'c-sounding-status', list:'c-wind-layer-list', prefix:'cl',
+              setMode:setCWindMode, add:addCWindLayer, getCount:()=>cLayerCount }
+          : { lat:'s2-lat', lon:'s2-lon', time:'s2-time', date:'s2-sounding-date',
+              status:'s2-sounding-status', list:'s2-wind-layer-list', prefix:'s2l',
+              setMode:setS2WindMode, add:addS2WindLayer, getCount:()=>s2LayerCount };
+        const status = document.getElementById(cfg.status);
+        const lat  = parseFloat(document.getElementById(cfg.lat).value);
+        const lon  = parseFloat(document.getElementById(cfg.lon).value);
+        const date = document.getElementById(cfg.date).value;
+        if (isNaN(lat) || isNaN(lon)) {
+          status.innerHTML = '<span style="color:#f66">⚠ Enter latitude and longitude first.</span>'; return;
+        }
+        if (!date) {
+          status.innerHTML = '<span style="color:#f66">⚠ Pick a sounding date.</span>'; return;
+        }
+        const tsec = timeToSeconds(document.getElementById(cfg.time).value);
+        const hour = tsec === null ? 12 : Math.floor(tsec / 3600);
+        status.innerHTML = '<span style="color:#9cf">Fetching nearest sounding… (first run downloads the station list)</span>';
+        try {
+          const resp = await fetch('/fetch_wind', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ lat, lon, date, hour }) });
+          const d = await resp.json();
+          if (d.error) {
+            const near = d.station ? ` (nearest: ${d.station.name}, ${d.station.distance_km} km)` : '';
+            status.innerHTML = `<span style="color:#f66">⚠ ${d.error}${near}</span>`;
+            return;
+          }
+          cfg.setMode('layers');
+          document.getElementById(cfg.list).innerHTML = '';
+          d.layers.forEach(L => {
+            cfg.add();
+            const id = cfg.getCount();
+            document.getElementById(`${cfg.prefix}${id}-alt`).value = L.alt_m;
+            document.getElementById(`${cfg.prefix}${id}-spd`).value = L.speed_ms;
+            document.getElementById(`${cfg.prefix}${id}-dir`).value = L.direction_deg;
+          });
+          const s = d.station;
+          status.innerHTML = `<span style="color:#6f6">✓ ${d.n_levels} levels from ${s.name} `
+            + `(#${s.stnm}, ${s.distance_km} km away) — ${d.used_time_utc}</span>`;
+        } catch(e) {
+          status.innerHTML = '<span style="color:#f66">⚠ Could not reach the server.</span>';
+        }
+      }
+
+      // Default both sounding-date pickers to today (UTC).
+      (function initSoundingDates() {
+        const today = new Date().toISOString().slice(0, 10);
+        ["c-sounding-date", "s2-sounding-date"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el && !el.value) el.value = today;
+        });
+      })();
 
       function toggleExplanation() {
         const el = document.getElementById("explanation");
