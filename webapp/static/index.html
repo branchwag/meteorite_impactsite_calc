@@ -537,6 +537,21 @@
               </div>
               <p class="hint">The dark-flight point altitude must be 18–33 km.</p>
             </div>
+
+            <div style="background:#111;border:1px solid #222;border-radius:7px;padding:0.9rem;margin-bottom:0.8rem">
+              <div style="font-size:0.72rem;color:#f0a500;font-weight:700;margin-bottom:0.55rem">Entry Trajectory</div>
+              <div class="row">
+                <div class="field">
+                  <label>Azimuth — heading of travel (°)</label>
+                  <input type="number" step="any" id="s2-azimuth" placeholder="0 = unknown" />
+                </div>
+                <div class="field">
+                  <label>Entry / elevation angle (°)</label>
+                  <input type="number" step="any" id="s2-entry-angle" placeholder="45" />
+                </div>
+              </div>
+              <p class="hint">Elevation angle: 90° = straight down, 0° = grazing the atmosphere. Defaults to 45°. Speed is fixed at 12 km/s and is not entered. After the dark-flight point the rock travels another 0.5 s (6 km) along this heading before settling into vertical dark flight. If azimuth is left at 0 (unknown), the result is reported as a wide search area.</p>
+            </div>
           </div>
 
           <div class="section">
@@ -586,7 +601,7 @@
         <div id="explanation">
           <div class="section" style="font-size:0.82rem;line-height:1.6;color:#ccc">
             <h3>1. Coordinate Conversion (LLA → ECEF)</h3>
-            <p>All lat/lon/altitude inputs are converted to Earth-Centered Earth-Fixed (ECEF) cartesian coordinates (R = 6,371,000 m):</p>
+            <p>All lat/lon/altitude inputs are converted to Earth-Centered Earth-Fixed (ECEF) cartesian coordinates (R = 6,371,008.8 m, the precise IUGG mean radius):</p>
             <pre>r = R + altitude
 x = r·cos(lat)·cos(lon)
 y = r·cos(lat)·sin(lon)
@@ -594,7 +609,7 @@ z = r·sin(lat)</pre>
 
             <h3>2. The Two Scenarios</h3>
             <p><strong style="color:#e0e0e0">Scenario 1 (radar hit):</strong> runs the full A/B/C analysis below — type/size, number of rocks from the observed dBZ, and wind-corrected ground location.</p>
-            <p><strong style="color:#e0e0e0">Scenario 2 (dark flight point):</strong> predicts only where to look on radar. Starting from the dark-flight point, the rock is descended vertically (direction = −position/|position|) through the standard atmosphere for an assumed 100 g chondrite, reporting the predicted lat/lon and clock time at each lower altitude (with optional per-layer wind correction), down to the ground. Type, size, number of rocks, and ground location require an actual radar hit (Scenario 1).</p>
+            <p><strong style="color:#e0e0e0">Scenario 2 (dark flight point):</strong> predicts only where to look on radar. From the dark-flight point the trajectory is first continued for 0.5 s at a fixed 12 km/s (6 km of path); the entry/elevation angle splits that path linearly between vertical drop and horizontal travel (90° = all 6 km straight down, 45° = 3 km down + 3 km along the azimuth, 0° = all horizontal), giving the point where vertical dark flight begins. From there the rock is descended through the standard atmosphere for an assumed 100 g chondrite, reporting the predicted lat/lon and clock time at each lower altitude (with optional per-layer wind correction), down to the ground. If no azimuth is entered the heading is unknown, so the result is a wide circular search area rather than a single track. Type, size, number of rocks, and ground location require an actual radar hit (Scenario 1).</p>
 
             <h3>3. Standard Atmosphere</h3>
             <p>Air density ρ(h) is interpolated from the ISA table (0–33 km, 1 km steps). Gravity is computed from the standard value: g(h) = 9.80665·(R/(R+h))².</p>
@@ -982,9 +997,13 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
         };
         const windCorrected = wind.wind_layers.length || wind.wind_single.speed_ms;
 
+        const azVal    = parseFloat(document.getElementById("s2-azimuth").value);
+        const angVal   = parseFloat(document.getElementById("s2-entry-angle").value);
         const payload = {
           fireball_end_s: fireball_s, df_time_s: pt_s,
           df_lat: lat, df_lon: lon, df_alt_m: alt_m,
+          azimuth_deg:     isNaN(azVal)  ? 0  : azVal,
+          entry_angle_deg: isNaN(angVal) ? 45 : angVal,
           density_g_cm3: getStrewnDensity(), Cd: getCd(), ...wind,
         };
 
@@ -1000,6 +1019,16 @@ Ze = (λ⁴ / π⁵|K|²) · Σσ / V_r</pre>
           }
           let html = `<div class="section-title" style="margin-bottom:0.5rem">Where to Look on Radar</div>`;
           (p.warnings || []).forEach(w => { html += `<p class="warn-msg">⚠ ${w}</p>`; });
+          const entryBits = [
+            `entry angle ${p.entry_angle_deg}°`,
+            `${(p.entry_speed_km_s)} km/s × ${p.entry_travel_s}s = ${(p.entry_speed_km_s*p.entry_travel_s).toFixed(0)} km path`,
+            `${(p.vertical_drop_m/1000).toFixed(1)} km down`,
+            p.azimuth_unknown ? "azimuth unknown" : `azimuth ${p.azimuth_deg}°, ${(p.horizontal_m/1000).toFixed(1)} km over`,
+          ].join(" · ");
+          html += `<p style="font-size:0.74rem;color:#9cf;margin-bottom:0.35rem">Entry continuation: ${entryBits}.</p>`;
+          if (p.azimuth_unknown && p.spread_radius_m > 0) {
+            html += `<p class="warn-msg">⚠ No azimuth entered — heading unknown. The track below assumes a straight-down drop; the rock could lie anywhere within roughly <strong>${(p.spread_radius_m/1000).toFixed(1)} km</strong> of each point. Search a wide area, or enter an azimuth to narrow it.</p>`;
+          }
           const pRows = p.predictions.map(row => {
             const isGround = row.alt_m === 0;
             return `<tr ${isGround ? 'style="background:#1a2a1a;font-weight:700"' : ''}>

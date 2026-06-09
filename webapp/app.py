@@ -10,7 +10,9 @@ import urllib.error
 
 app = Flask(__name__, static_folder="static")
 
-EARTH_RADIUS = 6_371_000.0
+# Precise IUGG mean Earth radius (R1). Used in the gravity model g(h) and in the
+# spherical LLA<->ECEF transforms; the uncle asked that R be carried precisely.
+EARTH_RADIUS = 6_371_008.8
 
 # ---------- Standard Atmosphere (ISA) -----------------------------------
 # Air density from spreadsheet "meteor dark flight.xlsx" Spherical tab,
@@ -437,6 +439,15 @@ def _fmt_utc(seconds):
 # Altitude levels (m) at which we report a predicted radar position, top-down.
 RADAR_PREDICT_LEVELS_M = [20000, 15000, 12000, 10000, 8000, 6000, 4000, 2000, 1000, 0]
 
+# Entry-trajectory continuation (Scenario 2). After the dark-flight point the rock
+# keeps moving on its ballistic path for a moment before settling into vertical
+# dark flight. The uncle fixes the speed (users do NOT enter it) and the extra
+# travel time; the entry angle decides how much of that path is "down".
+ENTRY_SPEED_KM_S        = 12.0    # fixed meteor speed
+ENTRY_TRAVEL_S          = 0.5     # extra travel after the dark-flight point
+ENTRY_PATH_M            = ENTRY_SPEED_KM_S * 1000.0 * ENTRY_TRAVEL_S   # = 6000 m
+DEFAULT_ENTRY_ANGLE_DEG = 45.0    # 90 = straight down, 0 = grazing the atmosphere
+
 @app.route("/predict_radar", methods=["POST"])
 def predict_radar():
     """Scenario 2: given a dark-flight point (a radar return high up) and the
@@ -457,6 +468,11 @@ def predict_radar():
         density_g_cm3  = float(data.get("density_g_cm3", 3.3))
         Cd             = float(data.get("Cd", 0.8))
         assumed_mass_g = float(data.get("assumed_mass_g", 100.0))  # spec: assume 100 g chondrite
+        # Entry trajectory: azimuth (compass bearing of travel) and elevation/entry
+        # angle. Speed is fixed (ENTRY_SPEED_KM_S) — users cannot enter it.
+        azimuth_deg     = float(data.get("azimuth_deg", 0.0) or 0.0)
+        entry_angle_deg = float(data.get("entry_angle_deg", DEFAULT_ENTRY_ANGLE_DEG)
+                                or DEFAULT_ENTRY_ANGLE_DEG)
 
         errors, warnings = [], []
 
@@ -482,11 +498,29 @@ def predict_radar():
         if errors:
             return jsonify({"errors": errors, "warnings": warnings}), 200
 
-        # Vertical descent straight down from the dark-flight point.
-        traj_point = lla_to_ecef(df_lat, df_lon, df_alt_m)
-        traj_dir   = -traj_point / np.linalg.norm(traj_point)
+        # Continue the ballistic trajectory ENTRY_TRAVEL_S past the dark-flight
+        # point: ENTRY_PATH_M metres along the entry direction. The entry angle
+        # splits that path linearly between "down" and "horizontal" (uncle's model:
+        # 90° -> all 6 km down, 45° -> 3 km down + 3 km over, 0° -> all horizontal).
+        ang_frac        = min(max(entry_angle_deg, 0.0), 90.0) / 90.0
+        vertical_drop_m = ENTRY_PATH_M * ang_frac
+        horizontal_m    = ENTRY_PATH_M * (1.0 - ang_frac)
+        # Azimuth defaults to 0; if still 0 we treat the heading as unknown and
+        # report a wide circular search area instead of one displaced track.
+        azimuth_unknown = (azimuth_deg == 0.0)
 
-        levels = [a for a in RADAR_PREDICT_LEVELS_M if a < df_alt_m] + [0]
+        start_alt_m = max(df_alt_m - vertical_drop_m, 0.0)
+        traj_point  = lla_to_ecef(df_lat, df_lon, start_alt_m)
+        if horizontal_m > 0 and not azimuth_unknown:
+            az  = math.radians(azimuth_deg)
+            enu = np.array([math.sin(az), math.cos(az), 0.0]) * horizontal_m
+            traj_point = traj_point + enu_to_ecef_rotation(df_lat, df_lon) @ enu
+        traj_dir = -traj_point / np.linalg.norm(traj_point)
+
+        # The rock reaches this entry start point ENTRY_TRAVEL_S after the
+        # dark-flight time; all fall times below are measured from the dark-flight
+        # point, so they include that initial leg.
+        levels = [a for a in RADAR_PREDICT_LEVELS_M if a < start_alt_m] + [0]
         levels = sorted(set(levels), reverse=True)
 
         predictions = []
@@ -496,11 +530,12 @@ def predict_radar():
                 wind_mode, wind_single, wind_layers, density_g_cm3, Cd
             )
             lat, lon, _ = ecef_to_lla(ecef)
+            t_total = ENTRY_TRAVEL_S + t_fall
             predictions.append({
                 "alt_m":      alt,
                 "alt_ft":     round(alt / 0.3048),
-                "t_fall_s":   round(t_fall, 1),
-                "clock_utc":  _fmt_utc(df_time_s + t_fall),
+                "t_fall_s":   round(t_total, 1),
+                "clock_utc":  _fmt_utc(df_time_s + t_total),
                 "lat":        round(lat, 5),
                 "lon":        round(lon, 5),
             })
@@ -524,14 +559,24 @@ def predict_radar():
                 )
 
         return jsonify({
-            "delta_t_s":      round(delta_t, 1),
-            "assumed_mass_g": assumed_mass_g,
-            "density_g_cm3":  density_g_cm3,
-            "predictions":    predictions,
-            "ground":         predictions[-1] if predictions else None,
-            "dbz_note":       dbz_note,
-            "errors":         errors,
-            "warnings":       warnings,
+            "delta_t_s":       round(delta_t, 1),
+            "assumed_mass_g":  assumed_mass_g,
+            "density_g_cm3":   density_g_cm3,
+            "entry_speed_km_s": ENTRY_SPEED_KM_S,
+            "entry_travel_s":  ENTRY_TRAVEL_S,
+            "entry_angle_deg": round(entry_angle_deg, 1),
+            "azimuth_deg":     round(azimuth_deg, 1),
+            "azimuth_unknown": azimuth_unknown,
+            "vertical_drop_m": round(vertical_drop_m, 1),
+            "horizontal_m":    round(horizontal_m, 1),
+            # When the heading is unknown the rock could be anywhere on a circle of
+            # this radius around the straight-down track — search a wide area.
+            "spread_radius_m": round(horizontal_m, 1) if azimuth_unknown else 0.0,
+            "predictions":     predictions,
+            "ground":          predictions[-1] if predictions else None,
+            "dbz_note":        dbz_note,
+            "errors":          errors,
+            "warnings":        warnings,
         })
 
     except KeyError as e:
